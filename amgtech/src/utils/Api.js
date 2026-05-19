@@ -1,20 +1,14 @@
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-//import store from '../services/Mob';
-// change your baseUrl and Domain
-//const base_url = 'http://45.77.246.138:8000';
-//const base_url = 'http://amgtech.dwansoft.com/backend/web/index.php?r=api';
-// const base_url = 'https://dev.amgvision.xyz/index.php?r=apitek2';
-const base_url = 'https://total.ikonten.com/api';
-//const base_url = "http://192.168.0.105:8000";
 
+const base_url = 'https://total.ikonten.com/api';
+const py_url = 'https://dreamland-anew-pang.ngrok-free.dev';
 const CUSTOM_SECURITY = 'dwansoft123';
 
 class Api {
   static headers() {
     return {
       'Custom-Security': CUSTOM_SECURITY,
-      'Content-Type': 'application/json',
+      // 'Content-Type': 'application/json',
       // LoginID: store.login.loginID,
     };
   }
@@ -57,37 +51,16 @@ class Api {
   static func = async (route, params, verb) => {
     const host = base_url;
     const url = `${host}/${route}`;
-    console.log('url--->', url);
-    //const LoginID = store.login.loginID;
-    //alert(store.login.loginID); //await Storage.getItem("profile");
-    //console.log('LOCALDB => ' + nip);
+    // console.log('url--->', url);
 
     let options = Object.assign(
       { method: verb },
       params ? { body: JSON.stringify(params) } : null,
     );
 
-    // console.log(JSON.stringify(params));
     options.headers = Api.headers();
-    // options.headers['Authorization'] = LoginID;
-    // console.log('URL===>>>>>', options);
     console.log(options.headers);
-    //Authorization for login user/////
-    // getting value from asyncStorage
-    //const email = await AsyncStorage.getItem('email');
-    //const pass = await AsyncStorage.getItem('password');
-    // console.log('emaail si',email)
-    // console.log('pass si',pass)
-    // // using buffer
-    // if (email !== null && pass !== null) {
-    // const hash = new Buffer(`${email}:${pass}`).toString('base64');
-    // options.headers['Authorization'] = `Basic ${hash}`;
-    // }
 
-    // options.auth= {
-    //   username: 'usama@gmail.com',
-    //   password: '123'
-    // }
     return fetch(url, options)
       .then(resp => {
         //console.log('Api response is ------------->>>>>>', resp);
@@ -114,35 +87,18 @@ class Api {
   static formDataPost = async (route, formData, verb) => {
     const host = base_url;
     const url = `${host}/${route}`;
-    //const nip = 'ridwan'; //await AsyncStorage.getItem("nip");
-    // alert(nip);
-    //formData.append('nip', nip);
+
     let options = {
       method: 'POST',
       body: formData,
       headers: {
-        //LoginID: store.login.loginID,
         'Custom-Security': CUSTOM_SECURITY,
         'Content-Type': 'application/json',
-        // 'Content-Type': 'multipart/form-data',
       },
       timeout: 180000,
     };
-    // getting value from asyncStorage  ***
-    //const email = await AsyncStorage.getItem('email');
-    // const pass = await AsyncStorage.getItem('password');
-    //console.log('login detail===>>>', email, pass);
-
-    //Authorization for login user using buffer ***
-    // if (email !== null && pass !== null) {
-    //   const hash = new Buffer(`${email}:${pass}`).toString('base64');
-    //  options.headers['Authorization'] = `Basic ${hash}`;
-    // }
-    //console.log(options);
     return fetch(url, options)
       .then(resp => {
-        //console.log('Api response is ------------->>>>>>', resp);
-
         let json = resp.json();
 
         if (resp.ok) {
@@ -162,42 +118,171 @@ class Api {
       });
   };
 
-  static axios = async (route, formData, config) => {
+  static axios = async (route, formData, config = {}) => {
     const host = base_url;
     const url = `${host}/${route}`;
-    //const nip = 'ridwan'; //await AsyncStorage.getItem("nip");
     let options = {
       headers: {
         'Custom-Security': CUSTOM_SECURITY,
         'Content-Type': 'multipart/form-data',
-        //Authorization: nip,
-        // LoginID: store.login.loginID,
       },
-      //timeout: 100000, // default is `0` (no timeout)
     };
     console.log(config);
     console.log(options);
-    let configrations = Object.assign(config, options);
+    let configrations = Object.assign({}, config, options);
     console.log(configrations);
-    // getting value from asyncStorage  ***
-    // const email = await AsyncStorage.getItem('email');
-    // const pass = await AsyncStorage.getItem('password');
-    //console.log('login detail===>>>', email, pass);
-
-    //Authorization for login user using buffer ***
-    // if (email !== null && pass !== null) {
-    // const hash = new Buffer(`${email}:${pass}`).toString('base64');
-    // options.headers['Authorization'] = `Basic ${hash}`;
-    // }
     configrations = null;
 
-    return axios.post(url, formData, configrations); //TypeError: Object.assign requires that input parameter not be null or undefined
-    // .then((response)=>{
-    //   console.log('SUCCESS!!',response);
-    // })
-    // .catch((error)=>{
-    //   console.log('FAILURE!!',error);
-    // });
+    return axios.post(url, formData, configrations);
+  };
+
+  static registerFace = async (userid, imageUrl) => {
+    const url = `${py_url}/daftar`;
+
+    if (!userid) {
+      console.warn('[Api] registerFace gagal: userid kosong!');
+      throw new Error('User ID kosong');
+    }
+
+    const formData = new FormData();
+    formData.append('file', {
+      uri: imageUrl,
+      type: 'image/jpeg',
+      name: 'face.jpg',
+    });
+
+    formData.append('user_id', String(userid).trim());
+
+    try {
+      const response = await axios.post(url, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'ngrok-skip-browser-warning': 'true', // untuk melewati peringatan ngrok
+        },
+        timeout: 30000,
+      });
+      return response.data;
+    } catch (error) {
+      console.warn(
+        '[Api] registerFace error:',
+        error?.response?.data ?? error.message,
+      );
+      throw error;
+    }
+  };
+
+  static verifyFace = async (userid, imageUri) => {
+    const url = `${py_url}/test`;
+
+    if (!userid) {
+      console.warn('[Api] verifyFace ditolak: userid kosong.');
+      throw new Error('User ID kosong.');
+    }
+
+    const formData = new FormData();
+    formData.append('file', {
+      uri: imageUri,
+      type: 'image/jpeg',
+      name: 'face.jpg',
+    });
+
+    formData.append('user_id', String(userid).trim());
+
+    try {
+      const response = await axios.post(url, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'ngrok-skip-browser-warning': 'true',
+        },
+        timeout: 30000,
+      });
+      return response.data;
+    } catch (error) {
+      console.warn(
+        '[Api] verifyFace error:',
+        error?.response?.data ?? error.message,
+      );
+      throw error;
+    }
+  };
+
+  static clockIn = async formData => {
+    const url = `${base_url}/clockin`;
+
+    try {
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Custom-Security': CUSTOM_SECURITY,
+        },
+        body: formData,
+      });
+
+      const text = await resp.text();
+      console.log('[Api] clockIn raw response:', text.slice(0, 200));
+
+      try {
+        return JSON.parse(text);
+      } catch {
+        throw new Error(`Server return non-JSON: ${text.slice(0, 100)}`);
+      }
+    } catch (error) {
+      console.warn('[Api] clockIn error:', error?.message ?? error);
+      throw error;
+    }
+  };
+
+  static clockOut = async userid => {
+    const url = `${base_url}/clockout`;
+
+    const body = new URLSearchParams();
+    body.append('UserId', String(userid));
+
+    try {
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Custom-Security': CUSTOM_SECURITY,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: body.toString(),
+      });
+
+      const text = await resp.text();
+      console.log('[Api] clockOut raw response:', text.slice(0, 200));
+
+      try {
+        return JSON.parse(text);
+      } catch {
+        throw new Error(`Server return non-JSON: ${text.slice(0, 100)}`);
+      }
+    } catch (error) {
+      console.warn('[Api] clockOut error:', error?.message ?? error);
+      throw error;
+    }
+  };
+
+  static getLeaveList = async userid => {
+    const url = `${base_url}/list`;
+
+    const body = new URLSearchParams();
+    body.append('UserId', String(userid));
+
+    try {
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Custom-Security': CUSTOM_SECURITY,
+        },
+        body: body.toString(),
+      });
+
+      const json = await resp.json();
+      return json;
+    } catch (error) {
+      console.warn('[Api] getLeaveList error:', error?.message ?? error);
+      throw error;
+    }
   };
 }
 

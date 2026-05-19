@@ -9,46 +9,12 @@ import {
   Modal,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  LogOut,
-  Mail,
-  User,
-  Phone,
-  MapPin,
-  Briefcase,
-  Calendar,
-  Shield,
-  Bell,
-  Lock,
-  HelpCircle,
-  ChevronRight,
-  Settings,
-  Key,
-  X,
-} from 'lucide-react-native';
+import { LogOut, Mail, User, Phone, Lock, Key, X } from 'lucide-react-native';
 import Storage from '../utils/Storage';
 import Api from '../utils/Api';
 import axios from 'axios';
 
-function ProfileHeader() {
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    const loadProfile = async () => {
-      const profile = await Storage.getProfile();
-      console.log('Profile data:', profile);
-
-      // kalau profile dari API berupa array [ { userid, nama_lengkap, username } ]
-      if (Array.isArray(profile) && profile.length > 0) {
-        setUser(profile[0]);
-      } else {
-        setUser(profile);
-      }
-    };
-
-    loadProfile();
-  }, []);
-  // console.log(user);
+function ProfileHeader({ user }) {
   return (
     <View className="items-center mb-6">
       <View className="w-24 h-24 bg-gray-200 rounded-full items-center justify-center shadow-xl mb-4 border-4 border-white">
@@ -58,24 +24,22 @@ function ProfileHeader() {
         {user?.employeenama || 'User'}
       </Text>
       <Text className="text-gray-500 text-sm mt-1">
-        Code : {user?.employeekode}
+        Code : {user?.employeekode || '-'}
       </Text>
       <View className="flex-row items-center mt-2 bg-green-50 px-3 py-1.5 rounded-full">
         <View className="w-2 h-2 bg-green-500 rounded-full mr-2" />
         <Text className="text-green-700 text-xs font-semibold">
-          {user?.statusvw === 'Aktif' ? 'Active' : 'Not Active'}
+          {user?.status === '1' ? 'Active' : 'Not Active'}
         </Text>
       </View>
     </View>
   );
 }
 
-function InfoCard() {
+function InfoCard({ user }) {
   const infos = [
-    { icon: Mail, label: 'Email', value: 'admin@amgtech.com' },
-    { icon: Phone, label: 'Phone', value: '+62 812-3456-7890' },
-    { icon: MapPin, label: 'Location', value: 'Batam, Indonesia' },
-    { icon: Calendar, label: 'Joined', value: 'January 2024' },
+    { icon: Mail, label: 'Email', value: user?.email || ' -' },
+    { icon: Phone, label: 'Phone', value: user?.phone || ' -' },
   ];
 
   return (
@@ -105,106 +69,25 @@ function InfoCard() {
   );
 }
 
-// function MenuSection({ title, items }) {
-//   return (
-//     <View className="mb-5">
-//       <Text className="text-gray-900 text-lg font-bold mb-3 px-1">{title}</Text>
-//       <View className="bg-white rounded-2xl shadow-sm overflow-hidden">
-//         {items.map((item, index) => (
-//           <TouchableOpacity
-//             key={index}
-//             activeOpacity={0.7}
-//             className={`flex-row items-center p-4 ${
-//               index !== items.length - 1 ? 'border-b border-gray-100' : ''
-//             }`}
-//           >
-//             <View
-//               className={`w-10 h-10 ${item.bgColor} rounded-xl items-center justify-center mr-3`}
-//             >
-//               <item.icon size={20} color={item.iconColor} strokeWidth={2.5} />
-//             </View>
-//             <View className="flex-1">
-//               <Text className="text-gray-900 text-base font-semibold">
-//                 {item.title}
-//               </Text>
-//               {item.subtitle && (
-//                 <Text className="text-gray-500 text-xs mt-0.5">
-//                   {item.subtitle}
-//                 </Text>
-//               )}
-//             </View>
-//             <ChevronRight size={20} color="#9ca3af" strokeWidth={2.5} />
-//           </TouchableOpacity>
-//         ))}
-//       </View>
-//     </View>
-//   );
-// }
-
-// function StatsCard() {
-//   const stats = [
-//     {
-//       label: 'Work Orders',
-//       value: '247',
-//       icon: Briefcase,
-//       color: 'bg-indigo-50',
-//       textColor: 'text-indigo-600',
-//     },
-//     {
-//       label: 'Completed',
-//       value: '189',
-//       icon: Shield,
-//       color: 'bg-green-50',
-//       textColor: 'text-green-600',
-//     },
-//     {
-//       label: 'Pending',
-//       value: '58',
-//       icon: Calendar,
-//       color: 'bg-amber-50',
-//       textColor: 'text-amber-600',
-//     },
-//   ];
-
-//   return (
-//     <View className="bg-white rounded-2xl p-5 mb-5 shadow-md">
-//       <Text className="text-gray-900 text-lg font-bold mb-4">
-//         Performance Overview
-//       </Text>
-//       <View className="flex-row justify-between">
-//         {stats.map((stat, index) => (
-//           <View
-//             key={index}
-//             className={`${stat.color} rounded-2xl p-4 flex-1 ${
-//               index === 1 ? 'mx-2' : ''
-//             }`}
-//           >
-//             <View className="items-center">
-//               <stat.icon
-//                 size={24}
-//                 color={stat.textColor.replace('text-', '#')}
-//                 strokeWidth={2.5}
-//               />
-//               <Text className={`${stat.textColor} text-2xl font-bold mt-2`}>
-//                 {stat.value}
-//               </Text>
-//               <Text className="text-gray-600 text-xs mt-1 font-medium">
-//                 {stat.label}
-//               </Text>
-//             </View>
-//           </View>
-//         ))}
-//       </View>
-//     </View>
-//   );
-// }
-
 export default function ProfileScreen({ setToken }) {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passold, setPassold] = useState('');
   const [pass, setPass] = useState('');
   const [passre, setPassre] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const [userData, setUserData] = useState(null);
+
+  useEffect(() => {
+    loadProfileData();
+  }, []);
+
+  const loadProfileData = async () => {
+    const profile = await Storage.getProfile();
+    // Pastikan mengambil objek pertama jika data berupa array
+    const data = Array.isArray(profile) ? profile[0] : profile;
+    setUserData(data);
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -217,6 +100,7 @@ export default function ProfileScreen({ setToken }) {
           style: 'destructive',
           onPress: async () => {
             await AsyncStorage.removeItem('userToken');
+            await AsyncStorage.removeItem('profile'); // Bersihkan profil saat logout
             setToken(null);
           },
         },
@@ -274,47 +158,6 @@ export default function ProfileScreen({ setToken }) {
     }
   };
 
-  // const accountMenus = [
-  //   {
-  //     title: 'Account Settings',
-  //     subtitle: 'Update your profile details',
-  //     icon: Settings,
-  //     bgColor: 'bg-indigo-50',
-  //     iconColor: '#4f46e5',
-  //   },
-  //   {
-  //     title: 'Security',
-  //     subtitle: 'Password and authentication',
-  //     icon: Lock,
-  //     bgColor: 'bg-purple-50',
-  //     iconColor: '#9333ea',
-  //   },
-  //   {
-  //     title: 'Notifications',
-  //     subtitle: 'Manage notification preferences',
-  //     icon: Bell,
-  //     bgColor: 'bg-blue-50',
-  //     iconColor: '#3b82f6',
-  //   },
-  // ];
-
-  // const supportMenus = [
-  //   {
-  //     title: 'Help Center',
-  //     subtitle: 'FAQs and support articles',
-  //     icon: HelpCircle,
-  //     bgColor: 'bg-green-50',
-  //     iconColor: '#10b981',
-  //   },
-  //   {
-  //     title: 'Privacy Policy',
-  //     subtitle: 'Read our privacy terms',
-  //     icon: Shield,
-  //     bgColor: 'bg-teal-50',
-  //     iconColor: '#14b8a6',
-  //   },
-  // ];
-
   return (
     <View className="flex-1 bg-gray-50">
       <View className="bg-gray-600 pt-12 pb-8 px-5 rounded-b-[32px] shadow-xl">
@@ -337,24 +180,12 @@ export default function ProfileScreen({ setToken }) {
         className="flex-1 px-5 -mt-4"
         showsVerticalScrollIndicator={false}
       >
-        {/* Profile header  */}
         <View className="bg-white rounded-2xl shadow-lg p-6 mb-5">
-          <ProfileHeader />
+          <ProfileHeader user={userData} />
         </View>
 
-        {/* Stat card */}
-        {/* <StatsCard /> */}
+        <InfoCard user={userData} />
 
-        {/* Info card */}
-        <InfoCard />
-
-        {/* Account manus */}
-        {/* <MenuSection title="Account" items={accountMenus} /> */}
-
-        {/* Support menus */}
-        {/* <MenuSection title="Support" items={supportMenus} /> */}
-
-        {/* Reset Password button */}
         <TouchableOpacity
           onPress={() => setShowPasswordModal(true)}
           activeOpacity={0.8}

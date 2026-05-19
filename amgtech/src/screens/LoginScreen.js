@@ -39,16 +39,18 @@ export default function LoginScreen({ setToken, navigation }) {
         if (response.data.success) {
           console.log('Response API:', response.data);
           const token = response.data.data[0].userid;
+          const profileData = response.data.data;
+
           setToken(token);
           await AsyncStorage.setItem('userToken', token);
-         // Storage.setProfile(response.data.data);
+          await Storage.setProfile(profileData);
           ToastAndroid.show(response.data.pesan, 3000);
           navigation.reset({
             index: 0,
             routes: [{ name: 'MainTabs' }],
           });
         } else {
-          Storage.clearProfile();
+          await Storage.clearProfile();
           ToastAndroid.show(response.data.pesan, 3000);
         }
         // context.setAuthState({ signedIn: true });

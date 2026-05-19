@@ -11,7 +11,6 @@ export default function App() {
     foregroundListener();
   }, []);
 
-  // Minta izin notifikasi (penting di Android 13+)
   const requestPermission = async () => {
     const authStatus = await messaging().requestPermission();
     const enabled =

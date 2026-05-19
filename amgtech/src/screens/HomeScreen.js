@@ -476,7 +476,7 @@ export default function HomeScreen() {
 
       <TouchableOpacity
         className="px-3 py-4 bg-black border-t border-gray-200 mb-4 rounded-full mx-5 flex-row justify-center items-center"
-        onPress={() => navigation.navigate('DetectionFace')}
+        onPress={() => navigation.navigate('RegisterFace')}
       >
         <ArrowRightToLine
           size={20}
@@ -484,7 +484,7 @@ export default function HomeScreen() {
           strokeWidth={2}
           style={{ marginRight: 2 }}
         />
-        <Text className="text-white text-lg font-bold ml-2">Clock In</Text>
+        <Text className="text-white text-lg font-bold ml-2">Register Face</Text>
       </TouchableOpacity>
     </View>
   );

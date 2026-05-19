@@ -8,9 +8,10 @@ import { getToken } from '../utils/auth';
 import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
 import WorkOrderScreen from '../screens/WorkOrderScreen';
-import WorkOrderDetailScreen from '../screens/WorkOrderDetailScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import FaceDetectionScreen from '../screens/FaceDetectionScreen';
+import RegisterFaceScreen from '../screens/RegisterFaceScreen';
+import HistoryScreen from '../screens/HistoryScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -32,8 +33,10 @@ function MainTabs({ setToken }) {
             iconName = focused ? 'clipboard' : 'clipboard-outline';
           else if (route.name === 'Profile')
             iconName = focused ? 'person' : 'person-outline';
-          else if (route.name === 'Register Face')
+          else if (route.name === 'Detect Face')
             iconName = focused ? 'scan' : 'scan-outline';
+          else if (route.name === 'History')
+            iconName = focused ? 'time' : 'time-outline';
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
@@ -41,7 +44,8 @@ function MainTabs({ setToken }) {
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Schedule" component={WorkOrderScreen} />
-      <Tab.Screen name="Register Face" component={FaceDetectionScreen} />
+      <Tab.Screen name="Detect Face" component={FaceDetectionScreen} />
+      <Tab.Screen name="History" component={HistoryScreen} />
       <Tab.Screen name="Profile">
         {props => <ProfileScreen {...props} setToken={setToken} />}
       </Tab.Screen>
@@ -61,7 +65,7 @@ export default function AppNavigator() {
   }, []);
 
   if (loading) {
-    return null; // bisa diganti splash screen / loader
+    return null; 
   }
 
   return (
@@ -72,16 +76,14 @@ export default function AppNavigator() {
             <Stack.Screen name="MainTabs" options={{ headerShown: false }}>
               {props => <MainTabs {...props} setToken={setToken} />}
             </Stack.Screen>
-
-            <Stack.Screen
-              name="WorkOrderDetail"
-              component={WorkOrderDetailScreen}
-              options={{ headerShown: false }}
-            />
-
             <Stack.Screen
               name="DetectionFace"
               component={FaceDetectionScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="RegisterFace"
+              component={RegisterFaceScreen}
               options={{ headerShown: false }}
             />
           </>

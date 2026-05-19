@@ -25,6 +25,7 @@ class Storage {
   static async setProfile(data) {
     //  console.warn('data==>>', data);
     try {
+      console.log('Menyimpan ke Storage:', data);
       await AsyncStorage.setItem('profile', JSON.stringify(data));
       return true;
     } catch (error) {
