@@ -28,9 +28,8 @@ import {
   ArrowLeftCircle,
   Briefcase,
   XCircle,
-  Hourglass,
 } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native'; // ✅ tambah useIsFocused
 import ImageResizer from '@bam.tech/react-native-image-resizer';
 import Api from '../utils/Api';
 import Storage from '../utils/Storage';
@@ -129,7 +128,6 @@ function ChallengeCard({ challengeId, isCapturing, stepIndex, total }) {
         <Text className="text-[17px] font-bold text-gray-900">{cfg.label}</Text>
         {isCapturing && (
           <Text className="text-[11px] font-medium text-yellow-500 mt-0.5">
-            <Hourglass size={12} color="#eab308" className="mr-1" />
             Menyimpan langkah...
           </Text>
         )}
@@ -194,6 +192,7 @@ function FailedCard() {
 
 export default function FaceDetectionScreen() {
   const navigation = useNavigation();
+  const isFocused = useIsFocused(); // ✅ FIX 1: track apakah screen sedang aktif/fokus
 
   const cameraRef = useRef(null);
   const device = useCameraDevice('front');
@@ -207,7 +206,7 @@ export default function FaceDetectionScreen() {
   const [verifiedPhotoUri, setVerifiedPhotoUri] = useState(null);
 
   const [faceMessage, setFaceMessage] = useState('Arahkan wajah ke kamera');
-  const [facePresent, setFacePresent] = useState(false); // wajah ada di frame (meski posisi belum tepat)
+  const [facePresent, setFacePresent] = useState(false);
 
   const [faceStatus, setFaceStatus] = useState({
     detected: false,
@@ -261,6 +260,18 @@ export default function FaceDetectionScreen() {
     openCamera();
   }, []);
 
+  useEffect(() => {
+    if (isFocused) {
+      setShowCamera(false);
+      const timer = setTimeout(() => {
+        setShowCamera(true);
+      }, 800); 
+      return () => clearTimeout(timer);
+    } else {
+      setShowCamera(false);
+    }
+  }, [isFocused]);
+
   const resetFlow = useCallback(() => {
     const shuffled = pickRandom(CHALLENGE_KEYS, 3);
     setChallenges(shuffled);
@@ -270,6 +281,8 @@ export default function FaceDetectionScreen() {
     setVerifyState(null);
     setVerifiedPhotoUri(null);
     setFaceMessage('Arahkan wajah ke kamera');
+    setShowCamera(false);
+    setTimeout(() => setShowCamera(true), 800);
   }, []);
 
   const captureAndVerify = useCallback(async () => {
@@ -393,7 +406,6 @@ export default function FaceDetectionScreen() {
         return;
       }
 
-      // Wajah ada di frame (meski posisi belum tepat)
       setFacePresent(true);
 
       const face = faces[0];
@@ -411,7 +423,8 @@ export default function FaceDetectionScreen() {
       }
 
       const isBlinking =
-        face.leftEyeOpenProbability < 0.3 && face.rightEyeOpenProbability < 0.3;
+        face.leftEyeOpenProbability < 0.3 &&
+        face.rightEyeOpenProbability < 0.3;
       const isSmiling = face.smilingProbability > 0.7;
 
       let direction = 'center';
@@ -480,7 +493,7 @@ export default function FaceDetectionScreen() {
       ? '#eab308'
       : faceStatus.detected
       ? '#3b82f6'
-      : '#ef4444';
+      : '#ececec';
 
   const currentChallengeId = challenges[currentStep];
 
@@ -554,7 +567,7 @@ export default function FaceDetectionScreen() {
               backgroundColor: '#f3f4f6',
             }}
           >
-            {showCamera && device && (
+            {showCamera && isFocused && device && (
               <Camera
                 ref={cameraRef}
                 style={{
@@ -565,10 +578,23 @@ export default function FaceDetectionScreen() {
                   bottom: 0,
                 }}
                 device={device}
-                isActive={showCamera && verifyState !== 'ok'}
+                isActive={showCamera && isFocused && verifyState !== 'ok'}
                 photo
                 pixelFormat="yuv"
                 frameProcessor={isFinished ? undefined : frameProcessor}
+                onError={error => {
+                  console.warn('[FaceDetection] Camera error:', error.code);
+                  if (
+                    error.code === 'system/camera-is-restricted' ||
+                    error.code === 'system/camera-already-in-use' ||
+                    error.code === 'system/no-camera-manager'
+                  ) {
+                    setShowCamera(false);
+                    setTimeout(() => {
+                      if (isFocused) setShowCamera(true);
+                    }, 1200);
+                  }
+                }}
               />
             )}
 

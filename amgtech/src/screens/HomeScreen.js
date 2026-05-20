@@ -52,7 +52,6 @@ function StatCard({ title, value, icon: Icon, gradient, trend, trendValue }) {
 export default function HomeScreen() {
   const [user, setUser] = useState(null);
   const [workOrders, setWorkOrders] = useState([]);
-  // const [loading, setLoading] = useState(false);
   const [stat, setStats] = useState({
     total: 'Counting...',
     open: 'Counting...',
@@ -69,7 +68,6 @@ export default function HomeScreen() {
   const requestAllPermissions = useCallback(async () => {
     console.log(' Requesting permissions...');
 
-    // 1. Request Location Permission
     if (Platform.OS === 'android') {
       try {
         const locationGranted = await PermissionsAndroid.request(
@@ -85,7 +83,6 @@ export default function HomeScreen() {
 
         if (locationGranted === PermissionsAndroid.RESULTS.GRANTED) {
           console.log('✓ Location permission granted');
-          // Ambil lokasi pertama kali untuk "warm up" GPS
           Geolocation.getCurrentPosition(
             position => {
               console.log(
@@ -106,11 +103,9 @@ export default function HomeScreen() {
         console.warn('Location permission error:', err);
       }
     } else {
-      // iOS
       Geolocation.requestAuthorization();
     }
 
-    // 2. Request Camera Permission
     if (!hasCameraPermission) {
       try {
         const cameraGranted = await requestCameraPermission();
@@ -179,13 +174,11 @@ export default function HomeScreen() {
     }
   };
 
-  useEffect(() => {
-    requestAllPermissions();
-  }, [requestAllPermissions]);
-
   useFocusEffect(
     useCallback(() => {
       const loadProfile = async () => {
+        await requestAllPermissions();
+
         const profile = await Storage.getProfile();
         if (Array.isArray(profile) && profile.length > 0) {
           setUser(profile[0]);
@@ -195,8 +188,9 @@ export default function HomeScreen() {
 
         getAllWorkOrders();
       };
+
       loadProfile();
-    }, []),
+    }, [requestAllPermissions]),
   );
 
   const stats = [
@@ -225,56 +219,6 @@ export default function HomeScreen() {
       gradient: 'bg-gradient-to-br from-red-500 to-red-600',
     },
   ];
-
-  // const quickActions = [
-  //   {
-  //     title: 'Create Work Order',
-  //     subtitle: 'Add new task for technician',
-  //     icon: FileText,
-  //     color: 'bg-indigo-500',
-  //   },
-  //   {
-  //     title: 'Team Schedule',
-  //     subtitle: 'View and manage schedules',
-  //     icon: Calendar,
-  //     color: 'bg-purple-500',
-  //   },
-  //   {
-  //     title: 'Performance Report',
-  //     subtitle: 'Check monthly analytics',
-  //     icon: BarChart3,
-  //     color: 'bg-blue-500',
-  //   },
-  //   {
-  //     title: 'Team Management',
-  //     subtitle: 'Manage technician profiles',
-  //     icon: Users,
-  //     color: 'bg-teal-500',
-  //   },
-  // ];
-
-  // const recentActivities = [
-  //   {
-  //     title: 'WO#1247 Completed',
-  //     time: '5 minutes ago',
-  //     status: 'completed',
-  //     icon: CheckCircle2,
-  //   },
-  //   {
-  //     title: 'New Work Order Assigned',
-  //     time: '12 minutes ago',
-  //     status: 'pending',
-  //     icon: Clock,
-  //   },
-  //   {
-  //     title: 'Urgent: Equipment Issue',
-  //     time: '1 hour ago',
-  //     status: 'urgent',
-  //     icon: AlertCircle,
-  //   },
-  // ];
-
-  // const rateCompleted = (stat.completed / stat.total) * 100;
 
   return (
     <View className="flex-1 bg-gray-50">
@@ -474,18 +418,22 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
-      <TouchableOpacity
-        className="px-3 py-4 bg-black border-t border-gray-200 mb-4 rounded-full mx-5 flex-row justify-center items-center"
-        onPress={() => navigation.navigate('RegisterFace')}
-      >
-        <ArrowRightToLine
-          size={20}
-          color="white"
-          strokeWidth={2}
-          style={{ marginRight: 2 }}
-        />
-        <Text className="text-white text-lg font-bold ml-2">Register Face</Text>
-      </TouchableOpacity>
+      {user?.statusregister == '1' && (
+        <TouchableOpacity
+          className="px-3 py-4 bg-black border-t border-gray-200 mb-4 rounded-full mx-5 flex-row justify-center items-center"
+          onPress={() => navigation.navigate('RegisterFace')}
+        >
+          <ArrowRightToLine
+            size={20}
+            color="white"
+            strokeWidth={2}
+            style={{ marginRight: 2 }}
+          />
+          <Text className="text-white text-lg font-bold ml-2">
+            Register Face
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }

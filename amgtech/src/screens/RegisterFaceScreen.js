@@ -15,14 +15,14 @@ import {
   useFrameProcessor,
 } from 'react-native-vision-camera';
 import { useFaceDetector } from 'react-native-vision-camera-face-detector';
-import { Worklets } from 'react-native-worklets-core';
+import { Worklets, useSharedValue } from 'react-native-worklets-core';
 import {
   ArrowLeft,
   ScanFace,
   CircleDot,
   CheckCircle,
 } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import ImageResizer from '@bam.tech/react-native-image-resizer';
 import Api from '../utils/Api';
 import Storage from '../utils/Storage';
@@ -64,13 +64,14 @@ function getFaceValidationMessage(face, frameW, frameH, currentStep) {
   const { bounds, yawAngle, pitchAngle } = face;
   const faceRatio = bounds.width / frameW;
 
-  if (faceRatio < 0.25) {
-    return 'Wajah terlalu jauh, dekatkan ke kamera';
-  }
+  // console.log(
+  //   `[Cek Sudut] Step: ${currentStep} | Yaw: ${yawAngle.toFixed(
+  //     2,
+  //   )} | Pitch: ${pitchAngle.toFixed(2)} | Ratio: ${faceRatio.toFixed(2)}`,
+  // );
 
-  if (faceRatio > 0.75) {
-    return 'Wajah terlalu dekat, jauhkan sedikit';
-  }
+  if (faceRatio < 0.25) return 'Wajah terlalu jauh, dekatkan ke kamera';
+  if (faceRatio > 0.75) return 'Wajah terlalu dekat, jauhkan sedikit';
 
   const faceCenterX = bounds.x + bounds.width / 2;
   const faceCenterY = bounds.y + bounds.height / 2;
@@ -78,9 +79,7 @@ function getFaceValidationMessage(face, frameW, frameH, currentStep) {
     Math.abs(faceCenterX - frameW / 2) < frameW * 0.35 &&
     Math.abs(faceCenterY - frameH / 2) < frameH * 0.35;
 
-  if (!isCentered) {
-    return 'Posisikan wajah tepat di tengah lingkaran';
-  }
+  if (!isCentered) return 'Posisikan wajah tepat di tengah lingkaran';
 
   const looseMargin = -30;
   const isInsideFrame =
@@ -89,32 +88,30 @@ function getFaceValidationMessage(face, frameW, frameH, currentStep) {
     bounds.x + bounds.width < frameW - looseMargin &&
     bounds.y + bounds.height < frameH - looseMargin;
 
-  if (!isInsideFrame) {
-    return 'Wajah terpotong, pastikan seluruh wajah terlihat';
-  }
+  if (!isInsideFrame) return 'Wajah terpotong, pastikan seluruh wajah terlihat';
 
   switch (currentStep) {
     case 0:
-      if (Math.abs(yawAngle) > 12 || Math.abs(pitchAngle) > 12) {
+      if (Math.abs(yawAngle) > 6 || Math.abs(pitchAngle) > 6)
         return 'Pastikan wajah tegak lurus menghadap depan';
-      }
       break;
     case 1:
-      if (yawAngle < 12) return 'Kurang menoleh ke kiri';
-      if (yawAngle > 35) return 'Terlalu menoleh ke kiri, tatap kamera sedikit';
+      if (yawAngle < 6) return 'Kurang menoleh ke kiri';
+      if (yawAngle > 12) return 'Terlalu menoleh ke kiri, kurangi sedikit';
       break;
     case 2:
-      if (yawAngle > -12) return 'Kurang menoleh ke kanan';
-      if (yawAngle < -35) return 'Terlalu menoleh ke kanan, tatap kamera sedikit';
+      if (yawAngle > -6) return 'Kurang menoleh ke kanan';
+      if (yawAngle < -12) return 'Terlalu menoleh ke kanan, kurangi sedikit';
       break;
     case 3:
-      if (pitchAngle > 12) return 'Kurang mendongak ke atas';
-      if (pitchAngle < -30) return 'Terlalu mendongak ke atas';
+      if (pitchAngle < 8) return 'Kurang mendongak ke atas';
+      if (pitchAngle > 18) return 'Terlalu mendongak ke atas';
       break;
     case 4:
-      if (pitchAngle < -12) return 'Kurang menunduk ke bawah';
-      if (pitchAngle > 30) return 'Terlalu menunduk ke bawah';
+      if (pitchAngle > -4) return 'Kurang menunduk ke bawah';
+      if (pitchAngle < -10) return 'Terlalu menunduk ke bawah';
       break;
+
     default:
       break;
   }
@@ -124,64 +121,101 @@ function getFaceValidationMessage(face, frameW, frameH, currentStep) {
 
 export default function RegisterFaceScreen() {
   const navigation = useNavigation();
+  const isFocused = useIsFocused();
   const cameraRef = useRef(null);
   const device = useCameraDevice('front');
   const { hasPermission, requestPermission } = useCameraPermission();
+  const [isMounted, setIsMounted] = useState(false);
 
   const [faceDetected, setFaceDetected] = useState(false);
   const [faceMessage, setFaceMessage] = useState('Arahkan wajah ke kamera');
   const [isCapturing, setIsCapturing] = useState(false);
   const [isDone, setIsDone] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+
+  const currentStepRef = useRef(0);
+  const isProcessing = useSharedValue(false);
   const profileRef = useRef(null);
-  const isProcessingCaptureRef = useRef(false);
+
+  const updateDetectedRef = useRef(null);
 
   const REQUIRED_CAPTURES = FACE_STEPS.length;
 
   useEffect(() => {
     Storage.getProfile().then(p => {
-      console.log('=== PROFILE DATA ===', JSON.stringify(p));
       profileRef.current = Array.isArray(p) ? p[0] : p;
     });
-    requestPermission();
+
+    const timer = setTimeout(async () => {
+      try {
+        await requestPermission();
+      } catch (e) {
+        console.warn('Gagal meminta izin kamera:', e);
+      } finally {
+        setIsMounted(true); // Izinkan kamera di-render setelah ini
+      }
+    }, 1000); 
+
+    return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    currentStepRef.current = currentStep;
+  }, [currentStep]);
 
   const faceDetector = useFaceDetector({
     performanceMode: 'accurate',
     classificationMode: 'none',
   });
 
-  const updateDetected = Worklets.createRunOnJS(
-    useCallback((faces, frameW, frameH, step, capturing) => {
-      if (isProcessingCaptureRef.current) return;
+  const updateDetected = useCallback((faces, frameW, frameH) => {
+    if (isProcessing.value) return;
 
-      if (faces.length === 0) {
-        setFaceDetected(false);
-        setFaceMessage('Wajah tidak terdeteksi');
-        return;
-      }
+    const step = currentStepRef.current; 
 
-      const face = faces[0];
-      const validation = getFaceValidationMessage(face, frameW, frameH, step);
+    // console.log('[RegisterFace] Detected faces:', faces.length, 'Step:', step);
 
-      if (validation === true) {
-        setFaceDetected(true);
-        setFaceMessage(`Posisi bagus! Silakan ambil foto ${FACE_STEPS[step].label}`);
-      } else {
-        setFaceDetected(false);
-        setFaceMessage(validation);
-      }
-    }, []),
-  );
+    if (faces.length === 0) {
+      setFaceDetected(false);
+      setFaceMessage(
+        'Wajah tidak terdeteksi.',
+      );
+      return;
+    }
+
+    const face = faces[0];
+    const validation = getFaceValidationMessage(face, frameW, frameH, step);
+
+    // console.log(
+    //   `[Validasi Status] Step: ${step}, Pesan Validasi:`,
+    //   validation === true ? 'BERHASIL' : validation,
+    // );
+
+    if (validation === true) {
+      setFaceDetected(true);
+      setFaceMessage(
+        `Posisi bagus! Silakan ambil foto ${FACE_STEPS[step].label}`,
+      );
+    } else {
+      setFaceDetected(false);
+      setFaceMessage(validation);
+    }
+  }, []);
+
+  useEffect(() => {
+    updateDetectedRef.current = Worklets.createRunOnJS(updateDetected);
+  }, [updateDetected]);
 
   const frameProcessor = useFrameProcessor(
     frame => {
       'worklet';
-      if (isProcessingCaptureRef.current) return;
+      if (isProcessing.value) return;
+
       const faces = faceDetector.detectFaces(frame);
-      updateDetected(faces, frame.width, frame.height, currentStep);
+
+      updateDetectedRef.current?.(faces, frame.width, frame.height);
     },
-    [faceDetector, updateDetected, currentStep],
+    [faceDetector],
   );
 
   const handleCapture = async () => {
@@ -192,8 +226,10 @@ export default function RegisterFaceScreen() {
       return;
     }
 
-    isProcessingCaptureRef.current = true;
-    setIsCapturing(true);
+    isProcessing.value = true;
+
+    setFaceDetected(false);
+    setFaceMessage('Memproses foto...');
 
     try {
       const photo = await cameraRef.current.takePhoto({
@@ -201,15 +237,20 @@ export default function RegisterFaceScreen() {
         enableShutterSound: false,
       });
 
+      setIsCapturing(true);
+
       const resized = await ImageResizer.createResizedImage(
         normalizeUri(photo.path),
-        800,
-        800,
+        1200,
+        1200,
         'JPEG',
-        80,
+        90,
       );
 
-      const result = await Api.registerFace(String(profile.userid), resized.uri);
+      const result = await Api.registerFace(
+        String(profile.userid),
+        resized.uri,
+      );
 
       if (result.success === true || result.success === 'true') {
         const nextStep = currentStep + 1;
@@ -221,8 +262,9 @@ export default function RegisterFaceScreen() {
             [{ text: 'OK', onPress: () => navigation.goBack() }],
           );
         } else {
-          setCurrentStep(nextStep);
           setFaceDetected(false);
+          setFaceMessage('Arahkan wajah ke kamera');
+          setCurrentStep(nextStep); 
         }
       } else {
         Alert.alert('Gagal', result.pesan || 'Gagal mendaftarkan wajah.');
@@ -232,9 +274,19 @@ export default function RegisterFaceScreen() {
       Alert.alert('Error', 'Gagal terhubung ke server.');
     } finally {
       setIsCapturing(false);
-      isProcessingCaptureRef.current = false;
+      setTimeout(() => {
+        isProcessing.value = false;
+      }, 800);
     }
   };
+
+  if (!isMounted) {
+    return (
+      <View className="flex-1 bg-white items-center justify-center">
+        <ActivityIndicator size="large" color="#3b82f6" />
+      </View>
+    );
+  }
 
   if (!hasPermission) {
     return (
@@ -253,7 +305,7 @@ export default function RegisterFaceScreen() {
     );
   }
 
-  const borderColor = isDone ? '#22c55e' : faceDetected ? '#3b82f6' : '#ef4444';
+  const borderColor = isDone ? '#22c55e' : faceDetected ? '#3b82f6' : '#ececec';
   const progress = Math.min(currentStep / REQUIRED_CAPTURES, 1);
 
   return (
@@ -321,7 +373,7 @@ export default function RegisterFaceScreen() {
               backgroundColor: '#f3f4f6',
             }}
           >
-            {device && (
+            {isMounted && isFocused && device && (
               <Camera
                 ref={cameraRef}
                 style={{
@@ -332,9 +384,8 @@ export default function RegisterFaceScreen() {
                   bottom: 0,
                 }}
                 device={device}
-                isActive={!isDone}
+                isActive={isFocused && !isDone}
                 photo
-                pixelFormat="yuv"
                 frameProcessor={frameProcessor}
               />
             )}
@@ -352,10 +403,10 @@ export default function RegisterFaceScreen() {
 
           {/* Real-time notification text */}
           <View className="flex-row items-center gap-x-1.5 mt-3.5 px-5">
-            <CircleDot size={14} color={faceDetected ? '#22c55e' : '#ef4444'} />
+            <CircleDot size={14} color={faceDetected ? '#22c55e' : '#808080'} />
             <Text
               className={`text-[13px] font-semibold text-center ${
-                faceDetected ? 'text-green-700' : 'text-red-500'
+                faceDetected ? 'text-green-700' : 'text-gray-500'
               }`}
             >
               {faceMessage}
