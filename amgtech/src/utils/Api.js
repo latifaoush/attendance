@@ -51,7 +51,6 @@ class Api {
   static func = async (route, params, verb) => {
     const host = base_url;
     const url = `${host}/${route}`;
-    // console.log('url--->', url);
 
     let options = Object.assign(
       { method: verb },
@@ -63,7 +62,6 @@ class Api {
 
     return fetch(url, options)
       .then(resp => {
-        //console.log('Api response is ------------->>>>>>', resp);
 
         let json = resp.json();
 
@@ -75,7 +73,6 @@ class Api {
         });
       })
       .then(json => {
-        // console.log('Api response is ------------->>>>>>', json);
 
         return json;
       })
@@ -93,7 +90,7 @@ class Api {
       body: formData,
       headers: {
         'Custom-Security': CUSTOM_SECURITY,
-        'Content-Type': 'application/json',
+        // 'Content-Type': 'application/json',
       },
       timeout: 180000,
     };
@@ -109,12 +106,10 @@ class Api {
         });
       })
       .then(json => {
-        //  console.log('Api response is ------------->>>>>>', json);
         return json;
       })
       .catch(error => {
         throw error;
-        //  console.log('API ERROR===>>>', error);
       });
   };
 
@@ -131,7 +126,7 @@ class Api {
     console.log(options);
     let configrations = Object.assign({}, config, options);
     console.log(configrations);
-    configrations = null;
+    // configrations = null;
 
     return axios.post(url, formData, configrations);
   };

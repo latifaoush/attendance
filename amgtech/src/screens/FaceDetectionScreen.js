@@ -7,6 +7,8 @@ import {
   Alert,
   StatusBar,
   ActivityIndicator,
+  Platform,
+  PermissionsAndroid,
 } from 'react-native';
 import {
   Camera,
@@ -29,10 +31,11 @@ import {
   Briefcase,
   XCircle,
 } from 'lucide-react-native';
-import { useNavigation, useIsFocused } from '@react-navigation/native'; // ✅ tambah useIsFocused
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import ImageResizer from '@bam.tech/react-native-image-resizer';
 import Api from '../utils/Api';
 import Storage from '../utils/Storage';
+import Geolocation from '@react-native-community/geolocation';
 
 const { width } = Dimensions.get('window');
 const CAMERA_SIZE = width * 0.65;
@@ -192,7 +195,7 @@ function FailedCard() {
 
 export default function FaceDetectionScreen() {
   const navigation = useNavigation();
-  const isFocused = useIsFocused(); // ✅ FIX 1: track apakah screen sedang aktif/fokus
+  const isFocused = useIsFocused();
 
   const cameraRef = useRef(null);
   const device = useCameraDevice('front');
@@ -220,10 +223,14 @@ export default function FaceDetectionScreen() {
   const [completedSteps, setCompletedSteps] = useState(new Set());
 
   const profileRef = useRef(null);
+  const [user, setUser] = useState(null);
   const currentStepRef = useRef(0);
   const challengesRef = useRef([]);
   const isCapturingRef = useRef(false);
   const isFinishedRef = useRef(false);
+
+  const [latitude, setLatitude] = useState(0);
+  const [longitude, setLongitude] = useState(0);
 
   useEffect(() => {
     currentStepRef.current = currentStep;
@@ -238,10 +245,105 @@ export default function FaceDetectionScreen() {
     isFinishedRef.current = isFinished;
   }, [isFinished]);
 
+  const getOneTimeLocation = useCallback(async (useHighAccuracy = true) => {
+    Geolocation.getCurrentPosition(
+      position => {
+        const currentLongitude = position.coords.longitude;
+        const currentLatitude = position.coords.latitude;
+
+        console.log(
+          'Long = ' + currentLongitude + ', Lat = ' + currentLatitude,
+        );
+        setLatitude(currentLatitude);
+        setLongitude(currentLongitude);
+
+        console.log('Lokasi berhasil didapat');
+      },
+      error => {
+        console.log('Error getting location:', error.message, error.code);
+
+        if (error.code === 3 && useHighAccuracy) {
+          console.log('GPS timeout, mencoba dengan Network Location...');
+          getOneTimeLocation(false);
+        } else if (error.code === 2) {
+          console.log('GPS tidak aktif');
+          Alert.alert(
+            'GPS Tidak Aktif',
+            'Silakan aktifkan GPS/Location di pengaturan HP Anda',
+            [
+              {
+                text: 'Coba Lagi',
+                onPress: () => getOneTimeLocation(true),
+              },
+              { text: 'Nanti', style: 'cancel' },
+            ],
+          );
+        } else {
+          console.log(
+            'Tidak dapat mendapatkan lokasi. Work order akan disubmit tanpa koordinat GPS.',
+          );
+        }
+      },
+      {
+        enableHighAccuracy: useHighAccuracy,
+        timeout: useHighAccuracy ? 15000 : 10000,
+        maximumAge: 10000,
+        distanceFilter: 10,
+      },
+    );
+  }, []);
+
+  const requestLocationPermission = useCallback(async () => {
+    if (Platform.OS === 'android') {
+      try {
+        const checkPermission = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        );
+
+        if (checkPermission) {
+          console.log('Permission already granted');
+          getOneTimeLocation(true);
+          return;
+        }
+
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: 'Izin Akses Lokasi',
+            message:
+              'Aplikasi membutuhkan akses lokasi untuk mencatat posisi work order',
+            buttonPositive: 'OK',
+            buttonNegative: 'Batal',
+          },
+        );
+
+        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+          console.log('Location permission granted');
+          getOneTimeLocation(true);
+        } else if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
+          Alert.alert(
+            'Izin Lokasi Ditolak',
+            'Silakan aktifkan izin lokasi di Settings > Apps > AMGTech > Permissions',
+            [{ text: 'OK' }],
+          );
+        } else {
+          console.log('Location permission denied');
+          Alert.alert('Info', 'Izin lokasi diperlukan untuk mencatat posisi');
+        }
+      } catch (err) {
+        console.warn('Error requesting permission:', err);
+      }
+    } else {
+      getOneTimeLocation(true);
+    }
+  }, [getOneTimeLocation]);
+
   useEffect(() => {
     Storage.getProfile()
       .then(p => {
-        profileRef.current = Array.isArray(p) ? p[0] : p;
+        const dataProfile = Array.isArray(p) ? p[0] : p;
+        profileRef.current = dataProfile;
+        setUser(dataProfile);
       })
       .catch(e => console.warn('[FaceDetection] Gagal load profile:', e));
   }, []);
@@ -258,14 +360,15 @@ export default function FaceDetectionScreen() {
     const shuffled = pickRandom(CHALLENGE_KEYS, 3);
     setChallenges(shuffled);
     openCamera();
-  }, []);
+    requestLocationPermission();
+  }, [openCamera, requestLocationPermission]);
 
   useEffect(() => {
     if (isFocused) {
       setShowCamera(false);
       const timer = setTimeout(() => {
         setShowCamera(true);
-      }, 800); 
+      }, 800);
       return () => clearTimeout(timer);
     } else {
       setShowCamera(false);
@@ -423,8 +526,7 @@ export default function FaceDetectionScreen() {
       }
 
       const isBlinking =
-        face.leftEyeOpenProbability < 0.3 &&
-        face.rightEyeOpenProbability < 0.3;
+        face.leftEyeOpenProbability < 0.3 && face.rightEyeOpenProbability < 0.3;
       const isSmiling = face.smilingProbability > 0.7;
 
       let direction = 'center';
@@ -447,16 +549,23 @@ export default function FaceDetectionScreen() {
 
   const handleClockIn = async () => {
     if (verifyState !== 'ok') return;
+
     const profile = profileRef.current;
-    if (!profile?.userid) {
+    if (!profile?.userid ) {
       Alert.alert('Error', 'Data profil tidak ditemukan.');
       return;
     }
-
-    setLoading(true);
+    
     try {
+      if (latitude === 0 && longitude === 0) {
+        await requestLocationPermission();
+      }
+      setLoading(true);
+
       const formData = new FormData();
-      formData.append('UserId', String(profile.userid));
+      formData.append('userid', String(profile.userid));
+      formData.append('latitude', String(latitude));
+      formData.append('longitude', String(longitude));
       formData.append('image', {
         uri: verifiedPhotoUri,
         type: 'image/jpeg',
@@ -714,7 +823,7 @@ export default function FaceDetectionScreen() {
               className="text-[12px] font-bold text-slate-800"
               numberOfLines={1}
             >
-              Kantor Pusat (Radius In)
+              {user?.event_locations || 'Tidak ada lokasi'}
             </Text>
           </View>
         </View>

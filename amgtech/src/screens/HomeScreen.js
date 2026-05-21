@@ -14,11 +14,7 @@ import {
   CheckCircle2,
   AlertCircle,
   TrendingUp,
-  Users,
   Ellipsis,
-  Settings,
-  FileText,
-  BarChart3,
   ArrowRightToLine,
 } from 'lucide-react-native';
 import Geolocation from '@react-native-community/geolocation';
@@ -220,6 +216,23 @@ export default function HomeScreen() {
     },
   ];
 
+  const formatPresensi = dateTimeStr => {
+    if (!dateTimeStr || dateTimeStr === '') return '-';
+    const date = new Date(dateTimeStr.replace(' ', 'T'));
+    if (isNaN(date.getTime())) return dateTimeStr;
+
+    const jam = date.toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const tanggal = date.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+    });
+
+    return `${tanggal} | ${jam}`;
+  };
+  
   return (
     <View className="flex-1 bg-gray-50">
       {/* Header with Gradient */}
@@ -297,10 +310,30 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <View className="bg-gray-700 rounded-b-3xl shadow-lg p-4 pt-8 -mt-6 flex-row justify-center items-center">
-          <Text className="text-white text-sm font-semibold">
-            Clock Out, 13 Maret 2026 (17:00 PM)
-          </Text>
+        <View className="bg-gray-700 rounded-b-3xl shadow-lg p-4 pt-8 -mt-6 flex-row justify-around items-center">
+          {/* Kolom Masuk */}
+          <View className="items-center flex-1 border-r border-gray-600">
+            <Text className="text-white text-xs font-medium uppercase">
+              Presensi Masuk
+            </Text>
+            <Text className="text-white text-sm font-bold mt-0.5">
+              {user?.check_in && user?.check_in !== ''
+                ? formatPresensi(user.check_in)
+                : '-'}
+            </Text>
+          </View>
+
+          {/* Kolom Keluar */}
+          <View className="items-center flex-1">
+            <Text className="text-white text-xs font-medium uppercase">
+              Presensi Keluar
+            </Text>
+            <Text className="text-white text-sm font-bold mt-0.5">
+              {user?.check_out && user?.check_out !== ''
+                ? formatPresensi(user.check_out)
+                : '-'}
+            </Text>
+          </View>
         </View>
       </View>
 

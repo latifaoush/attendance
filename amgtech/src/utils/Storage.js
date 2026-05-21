@@ -257,37 +257,6 @@ class Storage {
       return null;
     }
   }
-  // static async getMetode() {
-  //   let item = {};
-  //   try {
-  //     item = (await AsyncStorage.getItem('metode')) || null;
-  //     if (item == null) {
-  //       let params = {
-  //         filter: '',
-  //         page: 0,
-  //         limit: 10,
-  //       };
-  //       console.log('load page =', params);
-  //       let response = await Api.post('getmetode', params);
-  //       console.log('load data =', response);
-
-  //       if (response.success === true) {
-  //         await Storage.setMetode(response.data);
-  //         //var data = await Storage.getMetode();
-  //         item = response.data;
-  //       } else {
-  //         item = {};
-  //       }
-  //     }
-
-  //     const data = JSON.parse(item);
-  //     console.log('metode list' + data);
-  //     return data;
-  //   } catch (error) {
-  //     console.warn(error.message);
-  //     return null;
-  //   }
-  // }
 
   static clearProfile() {
     console.warn('data==>>clear');
@@ -296,6 +265,49 @@ class Storage {
       return true;
     } catch (error) {
       // Error retrieving data
+      console.warn(error.message);
+      return false;
+    }
+  }
+
+  static async updateCheckIn(checkInTime) {
+    try {
+      const item = await AsyncStorage.getItem('profile');
+      if (!item) return false;
+
+      const profile = JSON.parse(item);
+
+      if (Array.isArray(profile) && profile.length > 0) {
+        profile[0].check_in = checkInTime;
+        profile[0].check_out = '';
+      } else if (profile) {
+        profile.check_in = checkInTime;
+        profile.check_out = '';
+      }
+
+      await AsyncStorage.setItem('profile', JSON.stringify(profile));
+      return true;
+    } catch (error) {
+      console.warn(error.message);
+      return false;
+    }
+  }
+
+  static async updateCheckOut(checkOutTime) {
+    try {
+      const item = await AsyncStorage.getItem('profile');
+      if (!item) return false;
+
+      const profile = JSON.parse(item);
+      if (Array.isArray(profile) && profile.length > 0) {
+        profile[0].check_out = checkOutTime;
+      } else if (profile) {
+        profile.check_out = checkOutTime;
+      }
+
+      await AsyncStorage.setItem('profile', JSON.stringify(profile));
+      return true;
+    } catch (error) {
       console.warn(error.message);
       return false;
     }
