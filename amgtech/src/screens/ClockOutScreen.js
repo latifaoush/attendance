@@ -193,7 +193,7 @@ function FailedCard() {
   );
 }
 
-export default function FaceDetectionScreen() {
+export default function ClockOutScreen() {
   const navigation = useNavigation();
   const isFocused = useIsFocused();
 
@@ -547,7 +547,7 @@ export default function FaceDetectionScreen() {
     [faceDetector, updateFaceStatus],
   );
 
-  const handleClockIn = async () => {
+  const handleClockOut = async () => {
     if (verifyState !== 'ok') return;
 
     const profile = profileRef.current;
@@ -569,26 +569,20 @@ export default function FaceDetectionScreen() {
       formData.append('image', {
         uri: verifiedPhotoUri,
         type: 'image/jpeg',
-        name: `clockin_${profile.userid}_${Date.now()}.jpg`,
+        name: `clockout_${profile.userid}_${Date.now()}.jpg`,
       });
 
-      const response = await Api.clockIn(formData);
+      const response = await Api.clockOut(formData);
 
       if (response?.success) {
-        const checkInTIme = response?.data?.[0]?.check_in;
-        if (checkInTIme) {
-          await Storage.updateCheckIn(checkInTIme);
+        const checkOutTime = response?.data?.[0]?.check_out;
+        if (checkOutTime) {
+          await Storage.updateCheckOut(checkOutTime);
         }
 
-        const currentProfile = await Storage.getProfile();
-        const profile = Array.isArray(currentProfile)
-          ? currentProfile
-          : [currentProfile];
-        profile[0].checkin_userid = String(profile[0].userid); // tandai sudah clock in
-        await Storage.setProfile(profile);
-
-        Alert.alert('Sukses', 'Presensi masuk berhasil dicatat!');
-        navigation.replace('MainTabs', { screen: 'Home' });
+        Alert.alert('Sukses', 'Presensi Keluar berhasil dicatat.', [
+          { text: 'OK', onPress: () => navigation.replace('MainTabs', { screen: 'Home' }) }
+        ]);
       } else {
         Alert.alert(
           'Gagal',
@@ -596,7 +590,7 @@ export default function FaceDetectionScreen() {
         );
       }
     } catch (error) {
-      console.warn('[FaceDetection] handleClockIn error:', error);
+      console.warn('[FaceDetection] handleClockOut error:', error);
       Alert.alert('Error', 'Gagal menghubungi server.');
     } finally {
       setLoading(false);
@@ -857,7 +851,7 @@ export default function FaceDetectionScreen() {
 
         <TouchableOpacity
           disabled={verifyState !== 'ok' || loading}
-          onPress={handleClockIn}
+          onPress={handleClockOut}
           activeOpacity={0.85}
           className={`h-[60px] rounded-[18px] items-center justify-center ${
             verifyState === 'ok' ? 'bg-gray-900' : 'bg-gray-100'
@@ -872,7 +866,7 @@ export default function FaceDetectionScreen() {
               }`}
             >
               {verifyState === 'ok'
-                ? 'Submit Presensi Masuk'
+                ? 'Submit Presensi Keluar'
                 : verifyState === 'verifying'
                 ? 'Memverifikasi Wajah...'
                 : verifyState === 'fail'

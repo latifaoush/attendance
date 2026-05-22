@@ -227,20 +227,16 @@ class Api {
     }
   };
 
-  static clockOut = async userid => {
+  static clockOut = async formData => {
     const url = `${base_url}/clockout`;
-
-    const body = new URLSearchParams();
-    body.append('UserId', String(userid));
 
     try {
       const resp = await fetch(url, {
         method: 'POST',
         headers: {
           'Custom-Security': CUSTOM_SECURITY,
-          'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: body.toString(),
+        body: formData,
       });
 
       const text = await resp.text();

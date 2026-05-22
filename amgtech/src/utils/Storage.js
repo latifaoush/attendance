@@ -26,7 +26,8 @@ class Storage {
     //  console.warn('data==>>', data);
     try {
       console.log('Menyimpan ke Storage:', data);
-      await AsyncStorage.setItem('profile', JSON.stringify(data));
+      let normalized = Array.isArray(data) ? [data[0]] : [data];
+      await AsyncStorage.setItem('profile', JSON.stringify(normalized));
       return true;
     } catch (error) {
       console.warn(error.message);
@@ -299,10 +300,13 @@ class Storage {
       if (!item) return false;
 
       const profile = JSON.parse(item);
+
       if (Array.isArray(profile) && profile.length > 0) {
         profile[0].check_out = checkOutTime;
+        profile[0].last_check_out = checkOutTime;
       } else if (profile) {
         profile.check_out = checkOutTime;
+        profile.last_check_out = checkOutTime;
       }
 
       await AsyncStorage.setItem('profile', JSON.stringify(profile));

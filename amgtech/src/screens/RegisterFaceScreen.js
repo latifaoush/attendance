@@ -27,6 +27,7 @@ import ImageResizer from '@bam.tech/react-native-image-resizer';
 import Api from '../utils/Api';
 import Storage from '../utils/Storage';
 
+
 const { width } = Dimensions.get('window');
 const CAMERA_SIZE = width * 0.7;
 
@@ -154,7 +155,7 @@ export default function RegisterFaceScreen() {
       } finally {
         setIsMounted(true); // Izinkan kamera di-render setelah ini
       }
-    }, 1000); 
+    }, 1000);
 
     return () => clearTimeout(timer);
   }, []);
@@ -171,15 +172,13 @@ export default function RegisterFaceScreen() {
   const updateDetected = useCallback((faces, frameW, frameH) => {
     if (isProcessing.value) return;
 
-    const step = currentStepRef.current; 
+    const step = currentStepRef.current;
 
     // console.log('[RegisterFace] Detected faces:', faces.length, 'Step:', step);
 
     if (faces.length === 0) {
       setFaceDetected(false);
-      setFaceMessage(
-        'Wajah tidak terdeteksi.',
-      );
+      setFaceMessage('Wajah tidak terdeteksi.');
       return;
     }
 
@@ -256,6 +255,17 @@ export default function RegisterFaceScreen() {
         const nextStep = currentStep + 1;
         if (nextStep >= REQUIRED_CAPTURES) {
           setIsDone(true);
+
+          const currentProfile = await Storage.getProfile();
+          const profile = Array.isArray(currentProfile)
+            ? [...currentProfile]
+            : [currentProfile];
+
+          profile[0].statusregister = '0';
+          profile[0].faceid = String(profile[0].userid);
+
+          await Storage.setProfile(profile);
+
           Alert.alert(
             'Pendaftaran Wajah Berhasil!',
             `${REQUIRED_CAPTURES} foto wajah kamu telah tersimpan.`,
@@ -264,7 +274,7 @@ export default function RegisterFaceScreen() {
         } else {
           setFaceDetected(false);
           setFaceMessage('Arahkan wajah ke kamera');
-          setCurrentStep(nextStep); 
+          setCurrentStep(nextStep);
         }
       } else {
         Alert.alert('Gagal', result.pesan || 'Gagal mendaftarkan wajah.');

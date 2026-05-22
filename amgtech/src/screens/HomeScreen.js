@@ -177,9 +177,9 @@ export default function HomeScreen() {
 
         const profile = await Storage.getProfile();
         if (Array.isArray(profile) && profile.length > 0) {
-          setUser(profile[0]);
+          setUser({ ...profile[0] });
         } else {
-          setUser(profile);
+          setUser({ ...profile });
         }
 
         getAllWorkOrders();
@@ -230,9 +230,9 @@ export default function HomeScreen() {
       month: 'short',
     });
 
-    return `${tanggal} | ${jam}`;
+    return `${tanggal} (${jam})`;
   };
-  
+
   return (
     <View className="flex-1 bg-gray-50">
       {/* Header with Gradient */}
@@ -246,30 +246,7 @@ export default function HomeScreen() {
               {user?.employeenama || 'User'}
             </Text>
           </View>
-          {/* <TouchableOpacity className="w-12 h-12 bg-white/20 rounded-2xl items-center justify-center">
-            <Settings size={22} color="white" strokeWidth={2.5} />
-          </TouchableOpacity> */}
         </View>
-
-        {/* Quick Stats in Header */}
-        {/* <View className="flex-row justify-between">
-          <View className="bg-white/10 backdrop-blur-lg rounded-2xl p-4 flex-1 mr-2">
-            <Text className="text-indigo-200 text-xs font-medium mb-1">
-              On Progress Today
-            </Text>
-            <Text className="text-white text-2xl font-bold">
-              {stat.inProgress}
-            </Text>
-          </View>
-          <View className="bg-white/10 backdrop-blur-lg rounded-2xl p-4 flex-1 ml-2">
-            <Text className="text-indigo-200 text-xs font-medium mb-1">
-              Completion Rate
-            </Text>
-            <Text className="text-white text-2xl font-bold">
-              {stat.total > 0 ? `${rateCompleted.toFixed(1)}%` : '0%'}
-            </Text>
-          </View>
-        </View> */}
       </View>
 
       <View className="px-3 -mt-8">
@@ -451,7 +428,7 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
-      {user?.statusregister == '1' && (
+      {user?.statusregister == '1' && user?.faceid === '' && (
         <TouchableOpacity
           className="px-3 py-4 bg-black border-t border-gray-200 mb-4 rounded-full mx-5 flex-row justify-center items-center"
           onPress={() => navigation.navigate('RegisterFace')}
@@ -467,6 +444,32 @@ export default function HomeScreen() {
           </Text>
         </TouchableOpacity>
       )}
+
+      {user?.faceid &&
+        user?.faceid !== '' &&
+        (!user?.last_check_out || user?.last_check_out === '') &&
+        (!user?.check_out || user?.check_out === '') && (
+          <TouchableOpacity
+            className="px-3 py-4 bg-black border-t border-gray-200 mb-4 rounded-full mx-5 flex-row justify-center items-center"
+            onPress={() =>
+              user?.checkin_userid && user?.checkin_userid !== ''
+                ? navigation.navigate('ClockOut')
+                : navigation.navigate('FaceDetection')
+            }
+          >
+            <ArrowRightToLine
+              size={20}
+              color="white"
+              strokeWidth={2}
+              style={{ marginRight: 2 }}
+            />
+            <Text className="text-white text-lg font-bold ml-2">
+              {user?.checkin_userid && user?.checkin_userid !== ''
+                ? 'Presensi Keluar'
+                : 'Presensi Masuk'}
+            </Text>
+          </TouchableOpacity>
+        )}
     </View>
   );
 }
