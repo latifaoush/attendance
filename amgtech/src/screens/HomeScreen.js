@@ -445,8 +445,7 @@ export default function HomeScreen() {
         </TouchableOpacity>
       )}
 
-      {user?.faceid &&
-        user?.faceid !== '' &&
+      {user?.faceid && user?.faceid !== '' && user?.statusregister === '0' &&
         (!user?.last_check_out || user?.last_check_out === '') &&
         (!user?.check_out || user?.check_out === '') && (
           <TouchableOpacity

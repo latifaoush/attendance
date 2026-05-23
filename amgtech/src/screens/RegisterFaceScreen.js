@@ -22,11 +22,15 @@ import {
   CircleDot,
   CheckCircle,
 } from 'lucide-react-native';
-import { useNavigation, useIsFocused } from '@react-navigation/native';
+import {
+  useNavigation,
+  useIsFocused,
+  useFocusEffect,
+} from '@react-navigation/native';
 import ImageResizer from '@bam.tech/react-native-image-resizer';
 import Api from '../utils/Api';
 import Storage from '../utils/Storage';
-
+import { setBrightnessLevel } from '@reeq/react-native-device-brightness';
 
 const { width } = Dimensions.get('window');
 const CAMERA_SIZE = width * 0.7;
@@ -64,12 +68,6 @@ function getFaceValidationMessage(face, frameW, frameH, currentStep) {
 
   const { bounds, yawAngle, pitchAngle } = face;
   const faceRatio = bounds.width / frameW;
-
-  // console.log(
-  //   `[Cek Sudut] Step: ${currentStep} | Yaw: ${yawAngle.toFixed(
-  //     2,
-  //   )} | Pitch: ${pitchAngle.toFixed(2)} | Ratio: ${faceRatio.toFixed(2)}`,
-  // );
 
   if (faceRatio < 0.25) return 'Wajah terlalu jauh, dekatkan ke kamera';
   if (faceRatio > 0.75) return 'Wajah terlalu dekat, jauhkan sedikit';
@@ -139,8 +137,31 @@ export default function RegisterFaceScreen() {
   const profileRef = useRef(null);
 
   const updateDetectedRef = useRef(null);
-
   const REQUIRED_CAPTURES = FACE_STEPS.length;
+
+  useFocusEffect(
+    useCallback(() => {
+      const turnUpBrightness = async () => {
+        try {
+          await setBrightnessLevel(1.0);
+        } catch (e) {
+          console.warn('Gagal menaikkan kecerahan:', e);
+        }
+      };
+      turnUpBrightness();
+
+      return () => {
+        const resetBrightness = async () => {
+          try {
+            await setBrightnessLevel(0.5);
+          } catch (e) {
+            console.warn('Gagal mereset kecerahan saat meninggalkan layar:', e);
+          }
+        };
+        resetBrightness();
+      };
+    }, []),
+  );
 
   useEffect(() => {
     Storage.getProfile().then(p => {
@@ -153,7 +174,7 @@ export default function RegisterFaceScreen() {
       } catch (e) {
         console.warn('Gagal meminta izin kamera:', e);
       } finally {
-        setIsMounted(true); // Izinkan kamera di-render setelah ini
+        setIsMounted(true);
       }
     }, 1000);
 
@@ -174,8 +195,6 @@ export default function RegisterFaceScreen() {
 
     const step = currentStepRef.current;
 
-    // console.log('[RegisterFace] Detected faces:', faces.length, 'Step:', step);
-
     if (faces.length === 0) {
       setFaceDetected(false);
       setFaceMessage('Wajah tidak terdeteksi.');
@@ -184,11 +203,6 @@ export default function RegisterFaceScreen() {
 
     const face = faces[0];
     const validation = getFaceValidationMessage(face, frameW, frameH, step);
-
-    // console.log(
-    //   `[Validasi Status] Step: ${step}, Pesan Validasi:`,
-    //   validation === true ? 'BERHASIL' : validation,
-    // );
 
     if (validation === true) {
       setFaceDetected(true);
@@ -217,8 +231,20 @@ export default function RegisterFaceScreen() {
     [faceDetector],
   );
 
+  const handleGoBack = async () => {
+    try {
+      await setBrightnessLevel(0.5);
+    } catch (e) {
+      console.warn('Gagal menurunkan kecerahan:', e);
+    } finally {
+      setTimeout(() => {
+        navigation.goBack();
+      }, 100);
+    }
+  };
+
   const handleCapture = async () => {
-    if (!faceDetected || isCapturing) return;
+    if (!faceDetected || isCapturing || isDone) return;
     const profile = profileRef.current;
     if (!profile?.userid) {
       Alert.alert('Error', 'Data profil tidak ditemukan.');
@@ -226,7 +252,6 @@ export default function RegisterFaceScreen() {
     }
 
     isProcessing.value = true;
-
     setFaceDetected(false);
     setFaceMessage('Memproses foto...');
 
@@ -261,7 +286,7 @@ export default function RegisterFaceScreen() {
             ? [...currentProfile]
             : [currentProfile];
 
-          profile[0].statusregister = '0';
+          profile[0].statusregister = profile[0].statusregister;
           profile[0].faceid = String(profile[0].userid);
 
           await Storage.setProfile(profile);
@@ -269,7 +294,7 @@ export default function RegisterFaceScreen() {
           Alert.alert(
             'Pendaftaran Wajah Berhasil!',
             `${REQUIRED_CAPTURES} foto wajah kamu telah tersimpan.`,
-            [{ text: 'OK', onPress: () => navigation.goBack() }],
+            [{ text: 'OK', onPress: handleGoBack }],
           );
         } else {
           setFaceDetected(false);
@@ -325,7 +350,7 @@ export default function RegisterFaceScreen() {
       {/* Header */}
       <View className="flex-row items-center justify-between px-5 pt-[52px] pb-[14px] border-b border-gray-100">
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
+          onPress={handleGoBack}
           className="w-9 h-9 items-center justify-center"
         >
           <ArrowLeft size={22} color="#1f2937" />

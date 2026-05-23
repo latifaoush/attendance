@@ -31,11 +31,16 @@ import {
   Briefcase,
   XCircle,
 } from 'lucide-react-native';
-import { useNavigation, useIsFocused } from '@react-navigation/native';
+import {
+  useNavigation,
+  useIsFocused,
+  useFocusEffect,
+} from '@react-navigation/native';
 import ImageResizer from '@bam.tech/react-native-image-resizer';
 import Api from '../utils/Api';
 import Storage from '../utils/Storage';
 import Geolocation from '@react-native-community/geolocation';
+import { setBrightnessLevel } from '@reeq/react-native-device-brightness';
 
 const { width } = Dimensions.get('window');
 const CAMERA_SIZE = width * 0.65;
@@ -338,6 +343,30 @@ export default function FaceDetectionScreen() {
     }
   }, [getOneTimeLocation]);
 
+  useFocusEffect(
+    useCallback(() => {
+      const turnUpBrightness = async () => {
+        try {
+          await setBrightnessLevel(1.0);
+        } catch (e) {
+          console.warn('Gagal menaikkan kecerahan:', e);
+        }
+      };
+      turnUpBrightness();
+
+      return () => {
+        const resetBrightness = async () => {
+          try {
+            await setBrightnessLevel(0.5);
+          } catch (e) {
+            console.warn('Gagal mereset kecerahan saat meninggalkan layar:', e);
+          }
+        };
+        resetBrightness();
+      };
+    }, []),
+  );
+
   useEffect(() => {
     Storage.getProfile()
       .then(p => {
@@ -547,6 +576,18 @@ export default function FaceDetectionScreen() {
     [faceDetector, updateFaceStatus],
   );
 
+  const handleGoBack = async () => {
+    try {
+      await setBrightnessLevel(0.5);
+    } catch (e) {
+      console.warn('Gagal menurunkan kecerahan:', e);
+    } finally {
+      setTimeout(() => {
+        navigation.goBack();
+      }, 100);
+    }
+  };
+
   const handleClockIn = async () => {
     if (verifyState !== 'ok') return;
 
@@ -586,6 +627,12 @@ export default function FaceDetectionScreen() {
           : [currentProfile];
         profile[0].checkin_userid = String(profile[0].userid); // tandai sudah clock in
         await Storage.setProfile(profile);
+
+        try {
+          await setBrightnessLevel(0.5); // 0.5 adalah 50% kecerahan, sesuaikan dengan kebutuhan
+        } catch (e) {
+          console.warn('Gagal mengembalikan kecerahan setelah clockin:', e);
+        }
 
         Alert.alert('Sukses', 'Presensi masuk berhasil dicatat!');
         navigation.replace('MainTabs', { screen: 'Home' });
@@ -654,7 +701,7 @@ export default function FaceDetectionScreen() {
       {/* Header */}
       <View className="flex-row items-center justify-between px-5 pt-[52px] pb-[14px] border-b border-gray-100 bg-white">
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
+          onPress={handleGoBack}
           className="w-9 h-9 items-center justify-center"
         >
           <ArrowLeft size={22} color="#1f2937" />
