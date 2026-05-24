@@ -29,7 +29,6 @@ import {
 } from 'lucide-react-native';
 import Api from '../utils/Api';
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Storage from '../utils/Storage';
 
 const mapApiToWorkOrder = apiItem => {

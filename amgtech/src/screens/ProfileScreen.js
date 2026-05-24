@@ -26,12 +26,7 @@ function ProfileHeader({ user }) {
       <Text className="text-gray-500 text-sm mt-1">
         Code : {user?.employeekode || '-'}
       </Text>
-      <View className="flex-row items-center mt-2 bg-green-50 px-3 py-1.5 rounded-full">
-        <View className="w-2 h-2 bg-green-500 rounded-full mr-2" />
-        {/* <Text className="text-green-700 text-xs font-semibold">
-          {user?.status === '1' ? 'Active' : 'Not Active'}
-        </Text> */}
-      </View>
+      
     </View>
   );
 }

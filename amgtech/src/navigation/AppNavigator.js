@@ -13,6 +13,7 @@ import FaceDetectionScreen from '../screens/FaceDetectionScreen';
 import RegisterFaceScreen from '../screens/RegisterFaceScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import ClockOutScreen from '../screens/ClockOutScreen';
+import HistoryDetailScreen from '../screens/HistoryDetailScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -89,6 +90,11 @@ export default function AppNavigator() {
             <Stack.Screen
               name="ClockOut"
               component={ClockOutScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="HistoryDetail"
+              component={HistoryDetailScreen}
               options={{ headerShown: false }}
             />
           </>

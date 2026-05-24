@@ -62,7 +62,6 @@ class Api {
 
     return fetch(url, options)
       .then(resp => {
-
         let json = resp.json();
 
         if (resp.ok) {
@@ -73,7 +72,6 @@ class Api {
         });
       })
       .then(json => {
-
         return json;
       })
       .catch(erorr => {
@@ -253,11 +251,8 @@ class Api {
     }
   };
 
-  static getLeaveList = async userid => {
+  static getLeaveList = async formData => {
     const url = `${base_url}/list`;
-
-    const body = new URLSearchParams();
-    body.append('UserId', String(userid));
 
     try {
       const resp = await fetch(url, {
@@ -265,13 +260,66 @@ class Api {
         headers: {
           'Custom-Security': CUSTOM_SECURITY,
         },
-        body: body.toString(),
+        body: formData,
       });
 
-      const json = await resp.json();
-      return json;
+      const text = await resp.text();
+      console.log('[Api] getLeaveList raw response:', text);
+
+      if (!resp.ok) {
+        throw new Error(`Server error dengan status: ${resp.status}`);
+      }
+
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        throw new Error(
+          `Server tidak mengembalikan JSON valid. Response: ${text.slice(
+            0,
+            100,
+          )}`,
+        );
+      }
     } catch (error) {
       console.warn('[Api] getLeaveList error:', error?.message ?? error);
+      throw error;
+    }
+  };
+
+  static getLeaveDetail = async leaveid => {
+    const url = `${base_url}/detail`;
+
+    try {
+      const formData = new FormData();
+      formData.append('leaveid', leaveid);
+
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Custom-Security': CUSTOM_SECURITY,
+        },
+        body: formData,
+      });
+
+      const text = await resp.text();
+      console.log('[Api] getLeaveDetail raw response:', text);
+
+      if (!resp.ok) {
+        throw new Error(`Server error dengan status: ${resp.status}`);
+      }
+
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        throw new Error(
+          `Server tidak mengembalikan JSON valid. Response: ${text.slice(
+            0,
+            100,
+          )}`,
+        );
+      }
+    } catch (error) {
+      console.warn('[Api] getLeaveDetail error:', error?.message ?? error);
       throw error;
     }
   };
