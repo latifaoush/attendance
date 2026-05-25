@@ -34,13 +34,13 @@ function ProfileHeader({ user }) {
 function InfoCard({ user }) {
   const infos = [
     { icon: Mail, label: 'Email', value: user?.email || ' -' },
-    { icon: Phone, label: 'Phone', value: user?.phone || ' -' },
+    { icon: Phone, label: 'Nomor Telepon', value: user?.phone || ' -' },
   ];
 
   return (
     <View className="bg-white rounded-2xl shadow-sm p-5 mb-5">
       <Text className="text-gray-900 text-lg font-bold mb-4">
-        Personal Information
+        Informasi Akun
       </Text>
       {infos.map((info, index) => (
         <View
@@ -79,7 +79,6 @@ export default function ProfileScreen({ setToken }) {
 
   const loadProfileData = async () => {
     const profile = await Storage.getProfile();
-    // Pastikan mengambil objek pertama jika data berupa array
     const data = Array.isArray(profile) ? profile[0] : profile;
     setUserData(data);
   };
@@ -95,7 +94,7 @@ export default function ProfileScreen({ setToken }) {
           style: 'destructive',
           onPress: async () => {
             await AsyncStorage.removeItem('userToken');
-            await AsyncStorage.removeItem('profile'); // Bersihkan profil saat logout
+            await AsyncStorage.removeItem('profile'); 
             setToken(null);
           },
         },
@@ -159,10 +158,10 @@ export default function ProfileScreen({ setToken }) {
         <View className="flex-row justify-between items-center">
           <View>
             <Text className="text-white text-2xl font-bold tracking-wide">
-              My Profile
+              Profile
             </Text>
             <Text className="text-indigo-200 mt-1 text-sm">
-              Manage your account settings
+              Informasi akun dan pengaturan
             </Text>
           </View>
           {/* <TouchableOpacity className="w-12 h-12 bg-white/20 rounded-2xl items-center justify-center">

@@ -285,7 +285,7 @@ export default function FaceDetectionScreen() {
           );
         } else {
           console.log(
-            'Tidak dapat mendapatkan lokasi. Work order akan disubmit tanpa koordinat GPS.',
+            'Tidak dapat mendapatkan lokasi. Absensi akan disubmit tanpa koordinat GPS.',
           );
         }
       },
@@ -316,7 +316,7 @@ export default function FaceDetectionScreen() {
           {
             title: 'Izin Akses Lokasi',
             message:
-              'Aplikasi membutuhkan akses lokasi untuk mencatat posisi work order',
+              'Aplikasi membutuhkan akses lokasi untuk mencatat posisi absensi',
             buttonPositive: 'OK',
             buttonNegative: 'Batal',
           },
@@ -328,7 +328,7 @@ export default function FaceDetectionScreen() {
         } else if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
           Alert.alert(
             'Izin Lokasi Ditolak',
-            'Silakan aktifkan izin lokasi di Settings > Apps > AMGTech > Permissions',
+            'Silakan aktifkan izin lokasi di Settings',
             [{ text: 'OK' }],
           );
         } else {

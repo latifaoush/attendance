@@ -120,10 +120,9 @@ class Api {
         'Content-Type': 'multipart/form-data',
       },
     };
-    console.log(config);
-    console.log(options);
+    console.log(config, options);
     let configrations = Object.assign({}, config, options);
-    console.log(configrations);
+    // console.log(configrations);
     // configrations = null;
 
     return axios.post(url, formData, configrations);
@@ -320,6 +319,66 @@ class Api {
       }
     } catch (error) {
       console.warn('[Api] getLeaveDetail error:', error?.message ?? error);
+      throw error;
+    }
+  };
+
+  static getScheduleList = async formData => {
+    const url = `${base_url}/schedule`;
+    try {
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Custom-Security': CUSTOM_SECURITY,
+        },
+        body: formData,
+      });
+
+      const text = await resp.text();
+      console.log('[Api] getScheduleList raw response:', text);
+      if (!resp.ok) {
+        throw new Error(`Server error dengan status: ${resp.status}`);
+      }
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        throw new Error(
+          `Server tidak mengembalikan JSON valid. Response: ${text.slice(
+            0,
+            100,
+          )}`,
+        );
+      }
+    } catch (error) {
+      console.warn('[Api] getScheduleList error:', error?.message ?? error);
+      throw error;
+    }
+  };
+
+  static getScheduleDetail = async (userId, traneventid) => {
+    const url = `${base_url}/scheduledetail`;
+
+    try {
+      const formData = new FormData();
+      formData.append('userid', userId);
+      formData.append('traneventid', traneventid);
+
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Custom-Security': CUSTOM_SECURITY },
+        body: formData,
+      });
+
+      const text = await resp.text();
+      console.log('[Api] getScheduleDetail raw response:', text);
+
+      if (!resp.ok) {
+        throw new Error(`Server error: ${resp.status}`);
+      }
+
+      return JSON.parse(text);
+    } catch (error) {
+      console.warn('[Api] getScheduleDetail error:', error?.message ?? error);
       throw error;
     }
   };

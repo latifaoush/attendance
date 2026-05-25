@@ -8,7 +8,7 @@ import {
   Linking,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { ArrowLeft, Clock, MapPin, AlertCircle, CheckCircle } from 'lucide-react-native';
+import { ArrowLeft, Clock, MapPin, AlertCircle, CheckCircle, Camera} from 'lucide-react-native';
 import { useState, useEffect, useCallback } from 'react';
 import Api from '../utils/Api';
 
@@ -67,7 +67,6 @@ export default function HistoryDetailScreen() {
     if (leaveid) fetchDetail();
   }, [fetchDetail]);
 
-  // --- Parsing tanggal ---
   const dateObj = item ? new Date(item.leavedate) : null;
   const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
   const monthNames = [
@@ -217,13 +216,15 @@ export default function HistoryDetailScreen() {
               />
               <View className="px-4 py-3">
                 <Text className="text-[12px] text-gray-400 text-center">
-                  Foto saat {type === 'Masuk' ? 'clock-in' : 'clock-out'}
+                  Foto Absensi
                 </Text>
               </View>
             </View>
           ) : (
             <View className="bg-white rounded-2xl px-4 py-8 mb-3 items-center border border-gray-100">
-              <Text className="text-gray-300 text-[40px]">📷</Text>
+              <Text className="text-gray-300 text-[40px]">
+                <Camera size={40} color="#9ca3af" />
+              </Text>
               <Text className="text-gray-400 text-sm mt-2">Foto tidak tersedia</Text>
             </View>
           )}

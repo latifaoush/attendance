@@ -14,6 +14,7 @@ import RegisterFaceScreen from '../screens/RegisterFaceScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import ClockOutScreen from '../screens/ClockOutScreen';
 import HistoryDetailScreen from '../screens/HistoryDetailScreen';
+import Wodetail from '../screens/Wodetail';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -95,6 +96,11 @@ export default function AppNavigator() {
             <Stack.Screen
               name="HistoryDetail"
               component={HistoryDetailScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="WorkOrderDetail"
+              component={Wodetail}
               options={{ headerShown: false }}
             />
           </>

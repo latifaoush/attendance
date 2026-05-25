@@ -18,7 +18,7 @@ const groupByDate = data => {
       const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
       map[dateKey] = {
-        date: String(dateObj.getDate()).padStart(2, '0'),
+        date: `${dateObj.getDate()}`,
         day: dayNames[dateObj.getDay()],
         month: `${monthNames[dateObj.getMonth()]} ${dateObj.getFullYear()}`,
         entries: [],

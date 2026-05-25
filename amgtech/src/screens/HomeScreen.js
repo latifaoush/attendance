@@ -240,7 +240,7 @@ export default function HomeScreen() {
         <View className="flex-row justify-between items-center mb-6">
           <View>
             <Text className="text-indigo-200 text-sm font-medium">
-              Welcome back,
+              Selamat datang kembali,
             </Text>
             <Text className="text-white text-2xl font-bold mt-1">
               {user?.employeenama || 'User'}
@@ -323,28 +323,18 @@ export default function HomeScreen() {
         <View className="mb-6 mt-6">
           <Text className="text-gray-900 text-lg font-bold mb-4">Overview</Text>
           <View className="flex-row flex-wrap -mx-2">
-            {stats.map((stat, index) => (
-              <View key={index} className="w-1/2 px-2">
+            {stats.map((stat) => (
+              <View key={stat.title} className="w-1/2 px-2">
                 <StatCard {...stat} />
               </View>
             ))}
           </View>
         </View>
 
-        {/* Quick Actions */}
-        {/* <View className="mb-6">
-          <Text className="text-gray-900 text-lg font-bold mb-4">
-            Quick Actions
-          </Text>
-          {quickActions.map((action, index) => (
-            <QuickActionCard key={index} {...action} />
-          ))}
-        </View> */}
-
         {/* Recent Activity */}
         <View className="mb-8">
           <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-gray-900 text-lg font-bold">Recent Add</Text>
+            <Text className="text-gray-900 text-lg font-bold">Aktivitas Terbaru</Text>
           </View>
 
           <View className="bg-white rounded-2xl shadow-sm p-4">
@@ -445,7 +435,7 @@ export default function HomeScreen() {
         </TouchableOpacity>
       )}
 
-      {user?.faceid && user?.faceid !== '' && user?.statusregister === '0' &&
+      {user?.faceid && user?.faceid !== '' && user?.statusregister === '0' && user?.event_userid && user?.event_userid !== '' &&
         (!user?.last_check_out || user?.last_check_out === '') &&
         (!user?.check_out || user?.check_out === '') && (
           <TouchableOpacity

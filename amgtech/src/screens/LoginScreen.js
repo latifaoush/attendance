@@ -29,7 +29,7 @@ export default function LoginScreen({ setToken, navigation }) {
     formData.append('username', username);
     formData.append('pass', password);
     console.log(formData.username);
-    let self = this;
+    // let self = this;
     await axios
       .post(Api.getBaseUrl() + '/login', formData, {
         // method: 'POST',
@@ -125,7 +125,7 @@ export default function LoginScreen({ setToken, navigation }) {
 
         {/* Footer */}
         <View className="mt-8 items-center">
-          <Text className="text-gray-400 text-sm">© 2026 Maxindo LED</Text>
+          <Text className="text-gray-400 text-sm">© 2026 Dwansoft</Text>
         </View>
       </View>
     </View>
