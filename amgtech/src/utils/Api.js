@@ -8,7 +8,7 @@ class Api {
   static headers() {
     return {
       'Custom-Security': CUSTOM_SECURITY,
-      // 'Content-Type': 'application/json',
+      'Content-Type': 'application/json',
       // LoginID: store.login.loginID,
     };
   }
@@ -263,7 +263,7 @@ class Api {
       });
 
       const text = await resp.text();
-      console.log('[Api] getLeaveList raw response:', text);
+      // console.log('[Api] getLeaveList raw response:', text);
 
       if (!resp.ok) {
         throw new Error(`Server error dengan status: ${resp.status}`);
@@ -301,7 +301,7 @@ class Api {
       });
 
       const text = await resp.text();
-      console.log('[Api] getLeaveDetail raw response:', text);
+      // console.log('[Api] getLeaveDetail raw response:', text);
 
       if (!resp.ok) {
         throw new Error(`Server error dengan status: ${resp.status}`);

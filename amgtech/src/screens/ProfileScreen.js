@@ -24,9 +24,8 @@ function ProfileHeader({ user }) {
         {user?.employeenama || 'User'}
       </Text>
       <Text className="text-gray-500 text-sm mt-1">
-        Code : {user?.employeekode || '-'}
+        Kode : {user?.employeekode || '-'}
       </Text>
-      
     </View>
   );
 }
@@ -158,10 +157,10 @@ export default function ProfileScreen({ setToken }) {
         <View className="flex-row justify-between items-center">
           <View>
             <Text className="text-white text-2xl font-bold tracking-wide">
-              Profile
+              Profil
             </Text>
             <Text className="text-indigo-200 mt-1 text-sm">
-              Informasi akun dan pengaturan
+              Informasi akun
             </Text>
           </View>
           {/* <TouchableOpacity className="w-12 h-12 bg-white/20 rounded-2xl items-center justify-center">

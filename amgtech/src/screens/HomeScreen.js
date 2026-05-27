@@ -7,6 +7,7 @@ import {
   ScrollView,
   PermissionsAndroid,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import {
   Briefcase,
@@ -45,16 +46,57 @@ function StatCard({ title, value, icon: Icon, gradient, trend, trendValue }) {
   );
 }
 
-export default function HomeScreen() {
+export default function HomeScreen({ setToken }) {
   const [user, setUser] = useState(null);
   const [workOrders, setWorkOrders] = useState([]);
+  const navigation = useNavigation();
+  const [refreshing, setRefreshing] = useState(false);
+
   const [stat, setStats] = useState({
     total: 'Counting...',
     open: 'Counting...',
     inProgress: 'Counting...',
     completed: 'Counting...',
   });
-  const navigation = useNavigation();
+
+  const refreshProfile = async () => {
+    try {
+      const savedCredentials = await Storage.getCredentials();
+      console.log('Kredensial tersimpan:', savedCredentials);
+
+      if (!savedCredentials || !savedCredentials.username) {
+        console.log('Kredensial tidak ditemukan');
+        return null;
+      }
+
+      const formData = new FormData();
+      formData.append('username', savedCredentials.username);
+      formData.append('pass', savedCredentials.password);
+
+      const response = await Api.formDataPost('login', formData);
+      console.log('Response Refresh API:', response);
+
+      if (response?.success && response?.data?.length > 0) {
+        await Storage.setProfile(response.data);
+        setUser({ ...response.data[0] });
+        return response.data;
+      }
+      return null;
+    } catch (error) {
+      console.log('Error refresh profile:', error);
+      return null;
+    }
+  };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+
+    const latestProfile = await refreshProfile();
+
+    await getAllWorkOrders(latestProfile);
+
+    setRefreshing(false);
+  }, []);
 
   const {
     hasPermission: hasCameraPermission,
@@ -118,19 +160,26 @@ export default function HomeScreen() {
     }
   }, [hasCameraPermission, requestCameraPermission]);
 
-  const getAllWorkOrders = async () => {
+  const getAllWorkOrders = async (currentUser = null) => {
     try {
-      var data = await Storage.getProfile();
+      const data = currentUser || (await Storage.getProfile());
+
+      if (!data || !data[0] || !data[0]['userid']) {
+        console.log('User ID tidak ditemukan untuk mengambil Work Order');
+        return;
+      }
+
       let page = 1;
       let allData = [];
       let hasMore = true;
 
       while (hasMore) {
         const params = {
-          loginID: data[0]['userid'],
+          loginID: data[0]['userid'], 
           page: page,
           limit: 1000,
         };
+        
         const response = await Api.post('getworkorder', params);
         const allWorkOrders = response?.data || [];
 
@@ -163,7 +212,7 @@ export default function HomeScreen() {
           (a, b) => new Date(b.workerordertime) - new Date(a.workerordertime),
         )
         .slice(0, 3);
-      // console.log(recentActivity);
+
       setWorkOrders(recentActivity);
     } catch (error) {
       console.log('Error ambil semua data WorkOrder:', error);
@@ -182,7 +231,8 @@ export default function HomeScreen() {
           setUser({ ...profile });
         }
 
-        getAllWorkOrders();
+        const latestProfile = await refreshProfile();
+        await getAllWorkOrders(latestProfile);
       };
 
       loadProfile();
@@ -239,7 +289,7 @@ export default function HomeScreen() {
       <View className="bg-gray-600 pt-10 pb-8 px-5 rounded-b-[32px] shadow-xl">
         <View className="flex-row justify-between items-center mb-6">
           <View>
-            <Text className="text-indigo-200 text-sm font-medium">
+            <Text className="text-gray-200 text-sm font-medium">
               Selamat datang kembali,
             </Text>
             <Text className="text-white text-2xl font-bold mt-1">
@@ -318,12 +368,20 @@ export default function HomeScreen() {
         className="flex-1 px-5"
         contentContainerStyle={{ paddingTop: 2, paddingBottom: 20 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#4f46e5']} // Android
+            tintColor="#4f46e5" // iOS
+          />
+        }
       >
         {/* Stats Grid */}
         <View className="mb-6 mt-6">
           <Text className="text-gray-900 text-lg font-bold mb-4">Overview</Text>
           <View className="flex-row flex-wrap -mx-2">
-            {stats.map((stat) => (
+            {stats.map(stat => (
               <View key={stat.title} className="w-1/2 px-2">
                 <StatCard {...stat} />
               </View>
@@ -334,7 +392,9 @@ export default function HomeScreen() {
         {/* Recent Activity */}
         <View className="mb-8">
           <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-gray-900 text-lg font-bold">Aktivitas Terbaru</Text>
+            <Text className="text-gray-900 text-lg font-bold">
+              Aktivitas Terbaru
+            </Text>
           </View>
 
           <View className="bg-white rounded-2xl shadow-sm p-4">
@@ -435,13 +495,17 @@ export default function HomeScreen() {
         </TouchableOpacity>
       )}
 
-      {user?.faceid && user?.faceid !== '' && user?.statusregister === '0' && user?.event_userid && user?.event_userid !== '' &&
+      {user?.faceid &&
+        user?.faceid !== '' &&
+        user?.statusregister === '0' &&
+        user?.event_userid &&
+        user?.event_userid !== '' &&
         (!user?.last_check_out || user?.last_check_out === '') &&
         (!user?.check_out || user?.check_out === '') && (
           <TouchableOpacity
             className="px-3 py-4 bg-black border-t border-gray-200 mb-4 rounded-full mx-5 flex-row justify-center items-center"
             onPress={() =>
-              user?.checkin_userid && user?.checkin_userid !== ''
+             user?.check_in !== ''
                 ? navigation.navigate('ClockOut')
                 : navigation.navigate('FaceDetection')
             }
@@ -453,7 +517,7 @@ export default function HomeScreen() {
               style={{ marginRight: 2 }}
             />
             <Text className="text-white text-lg font-bold ml-2">
-              {user?.checkin_userid && user?.checkin_userid !== ''
+              {user?.check_in !== ''
                 ? 'Presensi Keluar'
                 : 'Presensi Masuk'}
             </Text>

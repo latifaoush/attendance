@@ -47,6 +47,29 @@ class Storage {
     }
   }
 
+  static async setCredentials(username, password) {
+    try {
+      await AsyncStorage.setItem(
+        'credentials',
+        JSON.stringify({ username, password }),
+      );
+      return true;
+    } catch (error) {
+      console.warn(error.message);
+      return false;
+    }
+  }
+
+  static async getCredentials() {
+    try {
+      const item = await AsyncStorage.getItem('credentials');
+      return item ? JSON.parse(item) : null;
+    } catch (error) {
+      console.warn(error.message);
+      return null;
+    }
+  }
+
   static async setMetode(data) {
     //  console.warn('data==>>', data);
     try {

@@ -157,12 +157,12 @@ export default function WorkOrderDetailScreen({ route, navigation }) {
             <InfoRow
               icon={<Wrench size={20} color="#4f46e5" strokeWidth={2.5} />}
               bgColor="bg-indigo-100"
-              label="Tipe Event"
+              label="Tahapan"
               value={detail?.type}
             />
             <InfoRow
-              icon={<Calendar size={20} color="#3b82f6" strokeWidth={2.5} />}
-              bgColor="bg-blue-100"
+              icon={<Calendar size={20} color="#10b981" strokeWidth={2.5} />}
+              bgColor="bg-green-100"
               label="Tanggal Mulai"
               value={detail?.date}
             />

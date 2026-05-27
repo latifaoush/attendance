@@ -39,7 +39,7 @@ import {
 import ImageResizer from '@bam.tech/react-native-image-resizer';
 import Api from '../utils/Api';
 import Storage from '../utils/Storage';
-import Geolocation from '@react-native-community/geolocation';
+import Geolocation from 'react-native-geolocation-service';
 import { setBrightnessLevel } from '@reeq/react-native-device-brightness';
 
 const { width } = Dimensions.get('window');
@@ -390,15 +390,11 @@ export default function FaceDetectionScreen() {
     setChallenges(shuffled);
     openCamera();
     requestLocationPermission();
-  }, [openCamera, requestLocationPermission]);
+  }, []);
 
   useEffect(() => {
     if (isFocused) {
-      setShowCamera(false);
-      const timer = setTimeout(() => {
-        setShowCamera(true);
-      }, 800);
-      return () => clearTimeout(timer);
+      setShowCamera(true);
     } else {
       setShowCamera(false);
     }
@@ -601,12 +597,35 @@ export default function FaceDetectionScreen() {
       if (latitude === 0 && longitude === 0) {
         await requestLocationPermission();
       }
+
+      let isMockLocation = false;
+
+      if (Platform.OS === 'android') {
+        try {
+          const DeviceInfo = require('react-native-device-info').default;
+          isMockLocation = await DeviceInfo.isMockLocationProvider();
+        } catch (e) {
+          console.warn('isMockLocationProvider error:', e);
+          isMockLocation = false;
+        }
+      }
+
+      if (isMockLocation) {
+        Alert.alert(
+          'Kecurangan Terdeteksi',
+          'Sistem mendeteksi Anda menggunakan aplikasi Fake GPS...',
+          [{ text: 'Paham' }],
+        );
+        return;
+      }
+
       setLoading(true);
 
       const formData = new FormData();
       formData.append('userid', String(profile.userid));
       formData.append('latitude', String(latitude));
       formData.append('longitude', String(longitude));
+      formData.append('is_mocked', String(isMockLocation));
       formData.append('image', {
         uri: verifiedPhotoUri,
         type: 'image/jpeg',
@@ -748,7 +767,6 @@ export default function FaceDetectionScreen() {
                 device={device}
                 isActive={showCamera && isFocused && verifyState !== 'ok'}
                 photo
-                pixelFormat="yuv"
                 frameProcessor={isFinished ? undefined : frameProcessor}
                 onError={error => {
                   console.warn('[FaceDetection] Camera error:', error.code);

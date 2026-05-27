@@ -41,9 +41,14 @@ export default function LoginScreen({ setToken, navigation }) {
           const token = response.data.data[0].userid;
           const profileData = response.data.data;
 
-          setToken(token);
-          await AsyncStorage.setItem('userToken', token);
+          await Storage.setCredentials(username, password);
           await Storage.setProfile(profileData);
+          await AsyncStorage.setItem('userToken', token);
+
+          if (typeof setToken === 'function') {
+            setToken(token);
+          }
+          
           ToastAndroid.show(response.data.pesan, 3000);
           navigation.reset({
             index: 0,
@@ -72,7 +77,7 @@ export default function LoginScreen({ setToken, navigation }) {
           <Image
             source={require('../assets/logo.webp')}
             className="w-40 h-40"
-            resizeMode='contain'
+            resizeMode="contain"
           />
           <Text className="text-3xl font-bold text-gray-700 tracking-wide">
             Maxindo LED

@@ -286,7 +286,7 @@ export default function RegisterFaceScreen() {
             ? [...currentProfile]
             : [currentProfile];
 
-          profile[0].statusregister = profile[0].statusregister;
+          // profile[0].statusregister = profile[0].statusregister;
           profile[0].faceid = String(profile[0].userid);
 
           await Storage.setProfile(profile);

@@ -8,19 +8,48 @@ import {
   Linking,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { ArrowLeft, Clock, MapPin, AlertCircle, CheckCircle, Camera} from 'lucide-react-native';
+import {
+  ChevronLeft,
+  Clock,
+  MapPin,
+  CheckCircle,
+  Camera,
+  Calendar,
+  Navigation,
+} from 'lucide-react-native';
 import { useState, useEffect, useCallback } from 'react';
 import Api from '../utils/Api';
 
-function InfoCard({ icon, label, value, valueColor = 'text-gray-900' }) {
+function InfoCard({ icon, label, value, valueColor = 'text-gray-800', accent = false }) {
   return (
-    <View className="flex-row items-center bg-white rounded-2xl px-4 py-3.5 mb-3 border border-gray-100">
-      <View className="w-9 h-9 rounded-xl bg-indigo-50 items-center justify-center mr-3">
+    <View
+      className={`flex-row items-center rounded-2xl px-4 py-4 mb-2.5 ${
+        accent
+          ? 'bg-gray-50 border border-gray-200'
+          : 'bg-white border border-gray-100'
+      }`}
+      style={{
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 4,
+        elevation: 1,
+      }}
+    >
+      <View
+        className={`w-10 h-10 rounded-2xl items-center justify-center mr-3.5 ${
+          accent ? 'bg-gray-100' : 'bg-gray-50'
+        }`}
+      >
         {icon}
       </View>
       <View className="flex-1">
-        <Text className="text-[11px] text-gray-400 mb-0.5">{label}</Text>
-        <Text className={`text-[15px] font-semibold ${valueColor}`}>{value || '-'}</Text>
+        <Text className="text-[11px] font-medium text-gray-400 mb-0.5 tracking-wide uppercase">
+          {label}
+        </Text>
+        <Text className={`text-[15px] font-bold ${valueColor}`}>
+          {value || '-'}
+        </Text>
       </View>
     </View>
   );
@@ -28,9 +57,68 @@ function InfoCard({ icon, label, value, valueColor = 'text-gray-900' }) {
 
 function SectionTitle({ title }) {
   return (
-    <Text className="text-[12px] font-bold text-gray-400 uppercase tracking-widest mb-2 mt-5 px-1">
-      {title}
-    </Text>
+    <View className="flex-row items-center mb-3 mt-6 px-1">
+      <View className="w-1 h-4 bg-gray-500 rounded-full mr-2" />
+      <Text className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+        {title}
+      </Text>
+    </View>
+  );
+}
+
+function TimeBlock({ label, time, isEmpty, isLate }) {
+  return (
+    <View
+      className="flex-1 bg-white rounded-2xl px-4 py-4 items-center border border-gray-100"
+      style={{
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 4,
+        elevation: 1,
+      }}
+    >
+      <Text className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
+        {label}
+      </Text>
+      {isEmpty ? (
+        <View className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center">
+          <Clock size={18} color="#d1d5db" />
+        </View>
+      ) : (
+        <View
+          className={`w-10 h-10 rounded-full items-center justify-center mb-1 ${
+            isLate ? 'bg-red-50' : 'bg-green-50'
+          }`}
+        >
+          <Clock size={18} color={isLate ? '#ef4444' : '#22c55e'} />
+        </View>
+      )}
+      <Text
+        className={`text-[22px] font-extrabold mt-1 ${
+          isEmpty
+            ? 'text-gray-300'
+            : isLate
+            ? 'text-red-500'
+            : 'text-gray-800'
+        }`}
+      >
+        {isEmpty ? '--:--' : time}
+      </Text>
+      {/* {isLate && !isEmpty && (
+        <View className="mt-1.5 bg-red-100 px-2 py-0.5 rounded-full">
+          <Text className="text-[10px] font-bold text-red-500">TERLAMBAT</Text>
+        </View>
+      )} */}
+      {/* {!isLate && !isEmpty && (
+        <View className="mt-1.5 bg-green-100 px-2 py-0.5 rounded-full">
+          <Text className="text-[10px] font-bold text-green-500">ON TIME</Text>
+        </View>
+      )} */}
+      {isEmpty && (
+        <Text className="text-[10px] text-gray-400 mt-1">Belum absen</Text>
+      )}
+    </View>
   );
 }
 
@@ -86,34 +174,107 @@ export default function HistoryDetailScreen() {
   return (
     <View className="flex-1 bg-gray-50">
       {/* Header */}
-      <View className="flex-row items-center justify-between px-5 pt-[52px] pb-[14px] border-b border-gray-100 bg-white">
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          className="w-9 h-9 items-center justify-center"
-        >
-          <ArrowLeft size={22} color="#1f2937" />
-        </TouchableOpacity>
-        <Text className="text-[15px] font-bold text-gray-900">Detail Absensi</Text>
-        <View className="w-9 h-9" />
+      <View
+        className="bg-gray-700 pt-14 pb-5 px-5 rounded-b-[32px] shadow-xl"
+        style={{
+          shadowColor: '#374151',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.2,
+          shadowRadius: 8,
+          elevation: 6,
+        }}
+      >
+        <View className="flex-row items-center">
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            className="w-10 h-10 bg-white/20 rounded-2xl items-center justify-center mr-3"
+            activeOpacity={0.7}
+          >
+            <ChevronLeft size={22} color="white" strokeWidth={2.5} />
+          </TouchableOpacity>
+          <View className="flex-1">
+            <Text className="text-white/70 text-[11px] font-semibold uppercase tracking-widest">
+              Rekap Kehadiran
+            </Text>
+            <Text className="text-white text-xl font-extrabold mt-0.5">
+              Detail Absensi
+            </Text>
+          </View>
+        </View>
       </View>
+
+      {/* Date Banner */}
+      {item && (
+        <View className="mx-5 mt-4">
+          <View
+            className="bg-white rounded-2xl px-4 py-4 flex-row items-center border border-gray-100"
+            style={{
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.06,
+              shadowRadius: 8,
+              elevation: 3,
+            }}
+          >
+            <View className="w-10 h-10 bg-gray-100 rounded-2xl items-center justify-center mr-3.5">
+              <Calendar size={18} color="#374151" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-gray-400 text-[11px] font-semibold uppercase tracking-wider mb-0.5">
+                {type}
+              </Text>
+              <Text className="text-gray-800 text-[16px] font-extrabold">
+                {fullDate}
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* Loading */}
       {loading && (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#4f46e5" />
-          <Text className="text-gray-400 mt-3 text-sm">Memuat detail...</Text>
+          <View
+            className="w-16 h-16 bg-white rounded-3xl items-center justify-center"
+            style={{
+              shadowColor: '#374151',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.1,
+              shadowRadius: 12,
+              elevation: 4,
+            }}
+          >
+            <ActivityIndicator size="large" color="#4b5563" />
+          </View>
+          <Text className="text-gray-400 mt-4 text-sm font-medium">
+            Memuat detail...
+          </Text>
         </View>
       )}
 
       {/* Error */}
       {!loading && error && (
-        <View className="flex-1 items-center justify-center px-6">
-          <Text className="text-gray-400 text-base text-center">{error}</Text>
+        <View className="flex-1 items-center justify-center px-8">
+          <View className="w-16 h-16 bg-red-50 rounded-3xl items-center justify-center mb-4">
+            <Text className="text-3xl">⚠️</Text>
+          </View>
+          <Text className="text-gray-700 text-base font-semibold text-center mb-1">
+            Oops, terjadi masalah
+          </Text>
+          <Text className="text-gray-400 text-sm text-center mb-6">{error}</Text>
           <TouchableOpacity
-            className="mt-4 bg-indigo-600 px-6 py-2.5 rounded-xl"
+            className="bg-gray-700 px-8 py-3 rounded-2xl"
             onPress={fetchDetail}
+            activeOpacity={0.8}
+            style={{
+              shadowColor: '#374151',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 4,
+            }}
           >
-            <Text className="text-white font-semibold">Coba Lagi</Text>
+            <Text className="text-white font-bold text-sm">Coba Lagi</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -122,110 +283,111 @@ export default function HistoryDetailScreen() {
       {!loading && !error && item && (
         <ScrollView
           className="flex-1 px-5"
-          contentContainerStyle={{ paddingTop: 20, paddingBottom: 40 }}
+          contentContainerStyle={{ paddingTop: 20, paddingBottom: 48 }}
           showsVerticalScrollIndicator={false}
         >
-          {/* Banner Tanggal */}
-          <View className="bg-gray-600 rounded-2xl px-5 py-5 mb-2">
-            <Text className="text-indigo-200 text-[12px] font-medium mb-1">{type}</Text>
-            <Text className="text-white text-[20px] font-extrabold mb-3">{fullDate}</Text>
-            <View className="flex-row mt-3 gap-2">
-              {isLate && (
-                <View className="bg-black rounded-full px-3 py-1">
-                  <Text className="text-white text-[11px] font-semibold">Terlambat</Text>
-                </View>
-              )}
-              {isOvertime && (
-                <View className="bg-yellow-400 rounded-full px-3 py-1">
-                  <Text className="text-white text-[11px] font-semibold">Lembur</Text>
-                </View>
-              )}
-              {!isLate && !isOvertime && (
-                <View className="bg-green-500 rounded-full px-3 py-1">
-                  <Text className="text-white text-[11px] font-semibold">Tepat Waktu</Text>
-                </View>
-              )}
-            </View>
+          {/* Waktu Absensi - Time blocks side by side */}
+          <SectionTitle title="Waktu Absensi" />
+          <View className="flex-row gap-3 mb-2.5">
+            <TimeBlock
+              label="Jam Masuk"
+              time={checkInTime}
+              isEmpty={!checkInTime}
+              isLate={isLate}
+            />
+            <View className="w-3" />
+            <TimeBlock
+              label="Jam Keluar"
+              time={checkOutTime}
+              isEmpty={!checkOutTime}
+              isLate={false}
+            />
           </View>
 
-          {/* Waktu Absensi */}
-          <SectionTitle title="Waktu Absensi" />
-          <InfoCard
-            icon={<Clock size={18} color="#4f46e5" />}
-            label="Jam Masuk"
-            value={checkInTime ?? 'Belum absen masuk'}
-            valueColor={isLate ? 'text-red-500' : 'text-gray-900'}
-          />
-          {item.late_duration && (
-            <InfoCard
-              icon={<AlertCircle size={18} color="#f97316" />}
-              label="Durasi Terlambat"
-              value={item.late_duration}
-              valueColor="text-orange-500"
-            />
-          )}
-          <InfoCard
-            icon={<Clock size={18} color="#4f46e5" />}
-            label="Jam Keluar"
-            value={checkOutTime ?? 'Belum absen keluar'}
-          />
           {item.overtime_duration && (
             <InfoCard
               icon={<CheckCircle size={18} color="#eab308" />}
               label="Durasi Lembur"
               value={item.overtime_duration}
-              valueColor="text-yellow-500"
+              valueColor="text-yellow-600"
+              accent={false}
             />
           )}
 
           {/* Lokasi */}
           <SectionTitle title="Lokasi" />
           <InfoCard
-            icon={<MapPin size={18} color="#4f46e5" />}
+            icon={<MapPin size={18} color="#4b5563" />}
             label="Latitude"
             value={item.latitude ?? 'Tidak tersedia'}
           />
           <InfoCard
-            icon={<MapPin size={18} color="#4f46e5" />}
+            icon={<MapPin size={18} color="#4b5563" />}
             label="Longitude"
             value={item.longitude ?? 'Tidak tersedia'}
           />
           {hasLocation && (
             <TouchableOpacity
               activeOpacity={0.8}
-              className="bg-indigo-50 border border-indigo-200 rounded-2xl px-4 py-3.5 mb-3 flex-row items-center justify-center"
+              className="bg-gray-700 rounded-2xl px-4 py-4 mb-2.5 flex-row items-center justify-center"
               onPress={() =>
                 Linking.openURL(
                   `https://www.google.com/maps?q=${item.latitude},${item.longitude}`,
                 )
               }
+              style={{
+                shadowColor: '#374151',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 10,
+                elevation: 4,
+              }}
             >
-              <MapPin size={16} color="#4f46e5" />
-              <Text className="text-indigo-600 font-semibold ml-2">Lihat di Google Maps</Text>
+              <Navigation size={16} color="white" />
+              <Text className="text-white font-bold ml-2 text-[14px]">
+                Lihat di Google Maps
+              </Text>
             </TouchableOpacity>
           )}
 
           {/* Foto Absensi */}
           <SectionTitle title="Foto Absensi" />
           {item.pict_url ? (
-            <View className="bg-white rounded-2xl overflow-hidden border border-gray-100 mb-3">
+            <View
+              className="bg-white rounded-3xl overflow-hidden border border-gray-100 mb-3"
+              style={{
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.06,
+                shadowRadius: 8,
+                elevation: 2,
+              }}
+            >
               <Image
                 source={{ uri: item.pict_url }}
                 className="w-full h-64"
                 resizeMode="cover"
               />
-              <View className="px-4 py-3">
-                <Text className="text-[12px] text-gray-400 text-center">
+              <View className="px-4 py-3 flex-row items-center justify-center">
+                <Camera size={13} color="#9ca3af" />
+                <Text className="text-[12px] text-gray-400 ml-1.5 font-medium">
                   Foto Absensi
                 </Text>
               </View>
             </View>
           ) : (
-            <View className="bg-white rounded-2xl px-4 py-8 mb-3 items-center border border-gray-100">
-              <Text className="text-gray-300 text-[40px]">
-                <Camera size={40} color="#9ca3af" />
+            <View
+              className="bg-white rounded-3xl px-4 py-10 mb-3 items-center border border-dashed border-gray-200"
+            >
+              <View className="w-16 h-16 bg-gray-50 rounded-2xl items-center justify-center mb-3">
+                <Camera size={28} color="#d1d5db" />
+              </View>
+              <Text className="text-gray-400 text-sm font-medium">
+                Foto tidak tersedia
               </Text>
-              <Text className="text-gray-400 text-sm mt-2">Foto tidak tersedia</Text>
+              <Text className="text-gray-300 text-[11px] mt-1">
+                Tidak ada foto yang diunggah
+              </Text>
             </View>
           )}
         </ScrollView>

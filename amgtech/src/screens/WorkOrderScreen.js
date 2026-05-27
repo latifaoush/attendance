@@ -1,4 +1,3 @@
-// WorkOrderScreen.jsx
 import React, {
   useState,
   useRef,
@@ -36,8 +35,6 @@ const formatDate = raw => {
   }
 };
 
-// Pisahkan scaleAnim ke dalam card itu sendiri
-// agar setiap card punya animasi independen — tidak berbagi satu Animated.Value
 function ScheduleCard({ item, onPress }) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
@@ -83,7 +80,7 @@ function ScheduleCard({ item, onPress }) {
               ellipsizeMode="tail"
               className="text-gray-900 font-bold text-base flex-1"
             >
-              {item.eventname}
+              Nama Acara : {item.eventname}
             </Text>
           </View>
         </View>
