@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Platform,
   PermissionsAndroid,
+  NativeModules,
 } from 'react-native';
 import {
   Camera,
@@ -39,8 +40,9 @@ import {
 import ImageResizer from '@bam.tech/react-native-image-resizer';
 import Api from '../utils/Api';
 import Storage from '../utils/Storage';
-import Geolocation from 'react-native-geolocation-service';
+import Geolocation from '@react-native-community/geolocation';
 import { setBrightnessLevel } from '@reeq/react-native-device-brightness';
+import { validateFakeGps } from '../utils/FakeGpsDetector';
 
 const { width } = Dimensions.get('window');
 const CAMERA_SIZE = width * 0.65;
@@ -200,6 +202,7 @@ function FailedCard() {
 
 export default function FaceDetectionScreen() {
   const navigation = useNavigation();
+  const [securityBlocked, setSecurityBlocked] = useState(false);
   const isFocused = useIsFocused();
 
   const cameraRef = useRef(null);
@@ -238,6 +241,64 @@ export default function FaceDetectionScreen() {
   const [longitude, setLongitude] = useState(0);
 
   useEffect(() => {
+    const checkFakeGps = async () => {
+      try {
+        console.log('FakeGpsModule:', NativeModules.FakeGpsModule);
+        const apps = await NativeModules.FakeGpsModule.detectFakeGpsApps();
+        console.log('Detected Apps:', apps);
+
+        const mock = await NativeModules.FakeGpsModule.isMockLocationEnabled();
+        console.log('Mock Location:', mock);
+
+        const dev = await NativeModules.FakeGpsModule.isDeveloperModeEnabled();
+        console.log('Developer Mode:', dev);
+
+        // BLOCK FAKE GPS APP
+        if (apps && apps.length > 0) {
+          setSecurityBlocked(true);
+
+          Alert.alert(
+            'Fake GPS Terdeteksi',
+            'Aplikasi fake GPS terdeteksi pada perangkat ini.\n\nNonaktifkan atau uninstall terlebih dahulu.',
+          );
+
+          return;
+        }
+
+        // BLOCK MOCK LOCATION
+        if (mock) {
+          setSecurityBlocked(true);
+
+          Alert.alert(
+            'Mock Location Aktif',
+            'Matikan mock location di developer options.',
+          );
+
+          return;
+        }
+
+        // BLOCK DEVELOPER MODE
+        if (!__DEV__ && dev) {
+          setSecurityBlocked(true);
+
+          Alert.alert(
+            'Developer Mode Aktif',
+            'Matikan developer mode sebelum melakukan presensi.',
+          );
+
+          return;
+        }
+
+        setSecurityBlocked(false);
+      } catch (e) {
+        console.log('Fake GPS Error:', e);
+      }
+    };
+
+    checkFakeGps();
+  }, []);
+
+  useEffect(() => {
     currentStepRef.current = currentStep;
   }, [currentStep]);
   useEffect(() => {
@@ -253,15 +314,23 @@ export default function FaceDetectionScreen() {
   const getOneTimeLocation = useCallback(async (useHighAccuracy = true) => {
     Geolocation.getCurrentPosition(
       position => {
+        console.log(position);
+
+        if (position?.mocked || position?.coords?.mocked) {
+          Alert.alert('Fake GPS Terdeteksi', 'Lokasi terindikasi palsu.');
+
+          setSecurityBlocked(true);
+          return;
+        }
+
         const currentLongitude = position.coords.longitude;
         const currentLatitude = position.coords.latitude;
-
         console.log(
           'Long = ' + currentLongitude + ', Lat = ' + currentLatitude,
         );
+
         setLatitude(currentLatitude);
         setLongitude(currentLongitude);
-
         console.log('Lokasi berhasil didapat');
       },
       error => {
@@ -386,15 +455,32 @@ export default function FaceDetectionScreen() {
   }, [hasPermission, requestPermission]);
 
   useEffect(() => {
-    const shuffled = pickRandom(CHALLENGE_KEYS, 3);
-    setChallenges(shuffled);
-    openCamera();
-    requestLocationPermission();
-  }, []);
+    const initialize = async () => {
+      const isSafe = await validateFakeGps();
+
+      if (!isSafe) {
+        setSecurityBlocked(true);
+        return;
+      }
+
+      setSecurityBlocked(false);
+
+      const shuffled = pickRandom(CHALLENGE_KEYS, 3);
+      setChallenges(shuffled);
+      openCamera();
+      requestLocationPermission();
+    };
+
+    initialize();
+  }, [openCamera, requestLocationPermission]);
 
   useEffect(() => {
     if (isFocused) {
-      setShowCamera(true);
+      setShowCamera(false);
+      const timer = setTimeout(() => {
+        setShowCamera(true);
+      }, 800);
+      return () => clearTimeout(timer);
     } else {
       setShowCamera(false);
     }
@@ -585,6 +671,12 @@ export default function FaceDetectionScreen() {
   };
 
   const handleClockIn = async () => {
+    const isSafe = await validateFakeGps();
+
+    if (!isSafe) {
+      return;
+    }
+
     if (verifyState !== 'ok') return;
 
     const profile = profileRef.current;
@@ -597,35 +689,12 @@ export default function FaceDetectionScreen() {
       if (latitude === 0 && longitude === 0) {
         await requestLocationPermission();
       }
-
-      let isMockLocation = false;
-
-      if (Platform.OS === 'android') {
-        try {
-          const DeviceInfo = require('react-native-device-info').default;
-          isMockLocation = await DeviceInfo.isMockLocationProvider();
-        } catch (e) {
-          console.warn('isMockLocationProvider error:', e);
-          isMockLocation = false;
-        }
-      }
-
-      if (isMockLocation) {
-        Alert.alert(
-          'Kecurangan Terdeteksi',
-          'Sistem mendeteksi Anda menggunakan aplikasi Fake GPS...',
-          [{ text: 'Paham' }],
-        );
-        return;
-      }
-
       setLoading(true);
 
       const formData = new FormData();
       formData.append('userid', String(profile.userid));
       formData.append('latitude', String(latitude));
       formData.append('longitude', String(longitude));
-      formData.append('is_mocked', String(isMockLocation));
       formData.append('image', {
         uri: verifiedPhotoUri,
         type: 'image/jpeg',
@@ -741,6 +810,19 @@ export default function FaceDetectionScreen() {
           />
         )}
 
+        {securityBlocked && (
+          <View className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-4">
+            <Text className="text-red-600 font-bold text-center text-base">
+              Perangkat Tidak Aman
+            </Text>
+
+            <Text className="text-red-500 text-center mt-2 text-sm leading-5">
+              Nonaktifkan Fake GPS, Mock Location, atau Developer Mode sebelum
+              melakukan presensi.
+            </Text>
+          </View>
+        )}
+
         {/* Camera circle */}
         <View className="items-center mb-5">
           <View
@@ -765,8 +847,14 @@ export default function FaceDetectionScreen() {
                   bottom: 0,
                 }}
                 device={device}
-                isActive={showCamera && isFocused && verifyState !== 'ok'}
+                isActive={
+                  showCamera &&
+                  isFocused &&
+                  verifyState !== 'ok' &&
+                  !securityBlocked
+                }
                 photo
+                // pixelFormat="yuv"
                 frameProcessor={isFinished ? undefined : frameProcessor}
                 onError={error => {
                   console.warn('[FaceDetection] Camera error:', error.code);
@@ -921,7 +1009,7 @@ export default function FaceDetectionScreen() {
         )}
 
         <TouchableOpacity
-          disabled={verifyState !== 'ok' || loading}
+          disabled={verifyState !== 'ok' || loading || securityBlocked}
           onPress={handleClockIn}
           activeOpacity={0.85}
           className={`h-[60px] rounded-[18px] items-center justify-center ${
@@ -942,6 +1030,8 @@ export default function FaceDetectionScreen() {
                 ? 'Memverifikasi Wajah...'
                 : verifyState === 'fail'
                 ? 'Verifikasi Gagal'
+                : securityBlocked
+                ? 'Perangkat Tidak Aman'
                 : `Lakukan: ${CHALLENGE_CONFIG[currentChallengeId]?.label}`}
             </Text>
           )}

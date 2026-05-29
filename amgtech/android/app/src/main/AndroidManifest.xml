@@ -1,5 +1,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+  <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
+
+    <queries>
+        <package android:name="com.lexa.fakegps"/>
+        <package android:name="com.incorporateapps.fakegps.fre"/>
+        <package android:name="com.gsmartstudio.fakegps"/>
+        <package android:name="com.fakegps.mock"/>
+        <package android:name="com.blogspot.newapphorizons.fakegps"/>
+    </queries>
+
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
