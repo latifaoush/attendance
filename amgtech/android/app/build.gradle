@@ -55,11 +55,6 @@ react {
     autolinkLibrariesWithApp()
 }
 
-project.ext.react = [
-    enableHermes: true,      // Hermes aktif
-    fabricEnabled: false     // Fabric nonaktif sementara
-]
-
 
 /**
  * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
@@ -78,6 +73,24 @@ def enableProguardInReleaseBuilds = false
  * this variant is about 6MiB larger per architecture than default.
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
+
+// tasks.whenTaskAdded { task ->
+//     if (task.name.contains('generateAutolinking') || task.name.contains('GenerateAutolinking')) {
+//         task.doLast {
+//             def cmakeFile = file("${buildDir}/generated/autolinking/src/main/jni/Android-autolinking.cmake")
+//             if (cmakeFile.exists()) {
+//                 def content = cmakeFile.text
+//                 content = content.replace(
+//                     'add_subdirectory("C:/xampp/htdocs/android/amgtech/node_modules/react-native-worklets-core/android/build/generated/source/codegen/jni/" RNWorkletsSpec_autolinked_build)',
+//                     '# patched: worklets-core codegen skipped'
+//                 )
+//                 content = content.replace('  react_codegen_RNWorkletsSpec', '  # react_codegen_RNWorkletsSpec')
+//                 cmakeFile.text = content
+//                 println "Patched Android-autolinking.cmake"
+//             }
+//         }
+//     }
+// }
 
 android {
     ndkVersion rootProject.ext.ndkVersion
@@ -112,6 +125,15 @@ android {
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
+
+packaging {
+    jniLibs {
+        pickFirsts += [
+            "**/libc++_shared.so",
+            "**/libfbjni.so"
+        ]
+    }
+}
 }
 
 dependencies {

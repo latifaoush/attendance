@@ -7,8 +7,6 @@ import {
   Alert,
   StatusBar,
   ActivityIndicator,
-  Platform,
-  PermissionsAndroid,
 } from 'react-native';
 import {
   Camera,
@@ -30,17 +28,12 @@ import {
   ArrowLeftCircle,
   Briefcase,
   XCircle,
+  Hourglass,
 } from 'lucide-react-native';
-import {
-  useNavigation,
-  useIsFocused,
-  useFocusEffect,
-} from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import ImageResizer from '@bam.tech/react-native-image-resizer';
 import Api from '../utils/Api';
 import Storage from '../utils/Storage';
-import Geolocation from '@react-native-community/geolocation';
-import { setBrightnessLevel } from '@reeq/react-native-device-brightness';
 
 const { width } = Dimensions.get('window');
 const CAMERA_SIZE = width * 0.65;
@@ -53,6 +46,7 @@ const CHALLENGE_CONFIG = {
 };
 
 const CHALLENGE_KEYS = Object.keys(CHALLENGE_CONFIG);
+
 const RESIZE_FINAL = { width: 800, height: 800, quality: 70 };
 
 function normalizeUri(path) {
@@ -67,34 +61,6 @@ function pickRandom(arr, n) {
     [copy[i], copy[j]] = [copy[j], copy[i]];
   }
   return copy.slice(0, n);
-}
-
-function getFaceValidationMessage(bounds, frameW, frameH) {
-  if (!bounds || !frameW || !frameH) return 'Arahkan wajah ke kamera';
-
-  const faceRatio = bounds.width / frameW;
-
-  if (faceRatio < 0.25) return 'Wajah terlalu jauh, dekatkan ke kamera';
-  if (faceRatio > 0.8) return 'Wajah terlalu dekat, jauhkan sedikit';
-
-  const faceCenterX = bounds.x + bounds.width / 2;
-  const faceCenterY = bounds.y + bounds.height / 2;
-  const isCentered =
-    Math.abs(faceCenterX - frameW / 2) < frameW * 0.38 &&
-    Math.abs(faceCenterY - frameH / 2) < frameH * 0.38;
-
-  if (!isCentered) return 'Posisikan wajah tepat di tengah lingkaran';
-
-  const looseMargin = -40;
-  const isInsideFrame =
-    bounds.x > looseMargin &&
-    bounds.y > looseMargin &&
-    bounds.x + bounds.width < frameW - looseMargin &&
-    bounds.y + bounds.height < frameH - looseMargin;
-
-  if (!isInsideFrame) return 'Wajah terpotong, pastikan seluruh wajah terlihat';
-
-  return true;
 }
 
 function StepIndicator({ challenges, currentStep, completedSteps }) {
@@ -136,6 +102,7 @@ function ChallengeCard({ challengeId, isCapturing, stepIndex, total }) {
         <Text className="text-[17px] font-bold text-gray-900">{cfg.label}</Text>
         {isCapturing && (
           <Text className="text-[11px] font-medium text-yellow-500 mt-0.5">
+            <Hourglass size={12} color="#eab308" className="mr-1" />
             Menyimpan langkah...
           </Text>
         )}
@@ -200,7 +167,6 @@ function FailedCard() {
 
 export default function FaceDetectionScreen() {
   const navigation = useNavigation();
-  const isFocused = useIsFocused();
 
   const cameraRef = useRef(null);
   const device = useCameraDevice('front');
@@ -209,12 +175,10 @@ export default function FaceDetectionScreen() {
   const [showCamera, setShowCamera] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
-  const [verifyState, setVerifyState] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [verifiedPhotoUri, setVerifiedPhotoUri] = useState(null);
 
-  const [faceMessage, setFaceMessage] = useState('Arahkan wajah ke kamera');
-  const [facePresent, setFacePresent] = useState(false);
+  const [verifyState, setVerifyState] = useState(null);
+
+  const [loading, setLoading] = useState(false);
 
   const [faceStatus, setFaceStatus] = useState({
     detected: false,
@@ -228,14 +192,10 @@ export default function FaceDetectionScreen() {
   const [completedSteps, setCompletedSteps] = useState(new Set());
 
   const profileRef = useRef(null);
-  const [user, setUser] = useState(null);
   const currentStepRef = useRef(0);
   const challengesRef = useRef([]);
   const isCapturingRef = useRef(false);
   const isFinishedRef = useRef(false);
-
-  const [latitude, setLatitude] = useState(0);
-  const [longitude, setLongitude] = useState(0);
 
   useEffect(() => {
     currentStepRef.current = currentStep;
@@ -250,129 +210,14 @@ export default function FaceDetectionScreen() {
     isFinishedRef.current = isFinished;
   }, [isFinished]);
 
-  const getOneTimeLocation = useCallback(async (useHighAccuracy = true) => {
-    Geolocation.getCurrentPosition(
-      position => {
-        const currentLongitude = position.coords.longitude;
-        const currentLatitude = position.coords.latitude;
-
-        console.log(
-          'Long = ' + currentLongitude + ', Lat = ' + currentLatitude,
-        );
-        setLatitude(currentLatitude);
-        setLongitude(currentLongitude);
-
-        console.log('Lokasi berhasil didapat');
-      },
-      error => {
-        console.log('Error getting location:', error.message, error.code);
-
-        if (error.code === 3 && useHighAccuracy) {
-          console.log('GPS timeout, mencoba dengan Network Location...');
-          getOneTimeLocation(false);
-        } else if (error.code === 2) {
-          console.log('GPS tidak aktif');
-          Alert.alert(
-            'GPS Tidak Aktif',
-            'Silakan aktifkan GPS/Location di pengaturan HP Anda',
-            [
-              {
-                text: 'Coba Lagi',
-                onPress: () => getOneTimeLocation(true),
-              },
-              { text: 'Nanti', style: 'cancel' },
-            ],
-          );
-        } else {
-          console.log(
-            'Tidak dapat mendapatkan lokasi. Absensi akan disubmit tanpa koordinat GPS.',
-          );
-        }
-      },
-      {
-        enableHighAccuracy: useHighAccuracy,
-        timeout: useHighAccuracy ? 15000 : 10000,
-        maximumAge: 10000,
-        distanceFilter: 10,
-      },
-    );
-  }, []);
-
-  const requestLocationPermission = useCallback(async () => {
-    if (Platform.OS === 'android') {
-      try {
-        const checkPermission = await PermissionsAndroid.check(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        );
-
-        if (checkPermission) {
-          console.log('Permission already granted');
-          getOneTimeLocation(true);
-          return;
-        }
-
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          {
-            title: 'Izin Akses Lokasi',
-            message:
-              'Aplikasi membutuhkan akses lokasi untuk mencatat posisi absensi',
-            buttonPositive: 'OK',
-            buttonNegative: 'Batal',
-          },
-        );
-
-        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-          console.log('Location permission granted');
-          getOneTimeLocation(true);
-        } else if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
-          Alert.alert(
-            'Izin Lokasi Ditolak',
-            'Silakan aktifkan izin lokasi di Settings',
-            [{ text: 'OK' }],
-          );
-        } else {
-          console.log('Location permission denied');
-          Alert.alert('Info', 'Izin lokasi diperlukan untuk mencatat posisi');
-        }
-      } catch (err) {
-        console.warn('Error requesting permission:', err);
-      }
-    } else {
-      getOneTimeLocation(true);
-    }
-  }, [getOneTimeLocation]);
-
-  useFocusEffect(
-    useCallback(() => {
-      const turnUpBrightness = async () => {
-        try {
-          await setBrightnessLevel(1.0);
-        } catch (e) {
-          console.warn('Gagal menaikkan kecerahan:', e);
-        }
-      };
-      turnUpBrightness();
-
-      return () => {
-        const resetBrightness = async () => {
-          try {
-            await setBrightnessLevel(0.5);
-          } catch (e) {
-            console.warn('Gagal mereset kecerahan saat meninggalkan layar:', e);
-          }
-        };
-        resetBrightness();
-      };
-    }, []),
-  );
-
   useEffect(() => {
     Storage.getProfile()
       .then(p => {
-        const dataProfile = Array.isArray(p) ? p[0] : p;
-        profileRef.current = dataProfile;
-        setUser(dataProfile);
+        profileRef.current = Array.isArray(p) ? p[0] : p;
+        console.log(
+          '[FaceDetection] Profile loaded:',
+          profileRef.current?.userid,
+        );
       })
       .catch(e => console.warn('[FaceDetection] Gagal load profile:', e));
   }, []);
@@ -389,20 +234,7 @@ export default function FaceDetectionScreen() {
     const shuffled = pickRandom(CHALLENGE_KEYS, 3);
     setChallenges(shuffled);
     openCamera();
-    requestLocationPermission();
-  }, [openCamera, requestLocationPermission]);
-
-  useEffect(() => {
-    if (isFocused) {
-      setShowCamera(false);
-      const timer = setTimeout(() => {
-        setShowCamera(true);
-      }, 800);
-      return () => clearTimeout(timer);
-    } else {
-      setShowCamera(false);
-    }
-  }, [isFocused]);
+  }, []);
 
   const resetFlow = useCallback(() => {
     const shuffled = pickRandom(CHALLENGE_KEYS, 3);
@@ -411,15 +243,14 @@ export default function FaceDetectionScreen() {
     setCompletedSteps(new Set());
     setIsFinished(false);
     setVerifyState(null);
-    setVerifiedPhotoUri(null);
-    setFaceMessage('Arahkan wajah ke kamera');
-    setShowCamera(false);
-    setTimeout(() => setShowCamera(true), 800);
   }, []);
 
   const captureAndVerify = useCallback(async () => {
     const profile = profileRef.current;
-    if (!profile?.userid) return;
+    if (!profile?.userid) {
+      console.warn('[FaceDetection] captureAndVerify: userid kosong');
+      return;
+    }
 
     setVerifyState('verifying');
 
@@ -430,6 +261,7 @@ export default function FaceDetectionScreen() {
       });
 
       const rawUri = normalizeUri(photo.path);
+
       const resized = await ImageResizer.createResizedImage(
         rawUri,
         RESIZE_FINAL.width,
@@ -438,14 +270,20 @@ export default function FaceDetectionScreen() {
         RESIZE_FINAL.quality,
       );
 
+      console.log(
+        '[FaceDetection] Mengirim foto ke /test untuk userid:',
+        profile.userid,
+      );
+
       const response = await Api.verifyFace(
         String(profile.userid),
         resized.uri,
       );
 
+      console.log('[FaceDetection] Response /test:', JSON.stringify(response));
+
       if (response?.success === 'true' || response?.success === true) {
         setVerifyState('ok');
-        setVerifiedPhotoUri(resized.uri);
       } else {
         setVerifyState('fail');
         Alert.alert(
@@ -478,6 +316,7 @@ export default function FaceDetectionScreen() {
 
     try {
       setCompletedSteps(prev => new Set([...prev, challengeId]));
+
       const step = currentStepRef.current;
       const total = challengesRef.current.length;
 
@@ -525,45 +364,25 @@ export default function FaceDetectionScreen() {
   });
 
   const updateFaceStatus = Worklets.createRunOnJS(
-    useCallback((faces, frameW, frameH) => {
-      if (faces.length === 0) {
-        setFacePresent(false);
+    useCallback(faces => {
+      if (faces.length > 0) {
+        const face = faces[0];
+        const isBlinking =
+          face.leftEyeOpenProbability < 0.3 &&
+          face.rightEyeOpenProbability < 0.3;
+        const isSmiling = face.smilingProbability > 0.7;
+        let direction = 'center';
+        if (face.yawAngle > 20) direction = 'left';
+        else if (face.yawAngle < -20) direction = 'right';
+        setFaceStatus({ detected: true, isSmiling, isBlinking, direction });
+      } else {
         setFaceStatus({
           detected: false,
           isSmiling: false,
           isBlinking: false,
           direction: 'center',
         });
-        setFaceMessage('Wajah tidak terdeteksi');
-        return;
       }
-
-      setFacePresent(true);
-
-      const face = faces[0];
-      const validation = getFaceValidationMessage(face.bounds, frameW, frameH);
-
-      if (validation !== true) {
-        setFaceStatus({
-          detected: false,
-          isSmiling: false,
-          isBlinking: false,
-          direction: 'center',
-        });
-        setFaceMessage(validation);
-        return;
-      }
-
-      const isBlinking =
-        face.leftEyeOpenProbability < 0.3 && face.rightEyeOpenProbability < 0.3;
-      const isSmiling = face.smilingProbability > 0.7;
-
-      let direction = 'center';
-      if (face.yawAngle > 20) direction = 'left';
-      else if (face.yawAngle < -20) direction = 'right';
-
-      setFaceStatus({ detected: true, isSmiling, isBlinking, direction });
-      setFaceMessage('');
     }, []),
   );
 
@@ -571,70 +390,35 @@ export default function FaceDetectionScreen() {
     frame => {
       'worklet';
       const faces = faceDetector.detectFaces(frame);
-      updateFaceStatus(faces, frame.width, frame.height);
+      updateFaceStatus(faces);
     },
     [faceDetector, updateFaceStatus],
   );
 
-  const handleGoBack = async () => {
-    try {
-      await setBrightnessLevel(0.5);
-    } catch (e) {
-      console.warn('Gagal menurunkan kecerahan:', e);
-    } finally {
-      setTimeout(() => {
-        navigation.goBack();
-      }, 100);
-    }
-  };
-
   const handleClockIn = async () => {
     if (verifyState !== 'ok') return;
-
     const profile = profileRef.current;
     if (!profile?.userid) {
       Alert.alert('Error', 'Data profil tidak ditemukan.');
       return;
     }
 
+    setLoading(true);
     try {
-      if (latitude === 0 && longitude === 0) {
-        await requestLocationPermission();
-      }
-      setLoading(true);
+      console.log(
+        '[FaceDetection] Mengirim clockIn untuk userid:',
+        profile.userid,
+      );
 
-      const formData = new FormData();
-      formData.append('userid', String(profile.userid));
-      formData.append('latitude', String(latitude));
-      formData.append('longitude', String(longitude));
-      formData.append('image', {
-        uri: verifiedPhotoUri,
-        type: 'image/jpeg',
-        name: `clockin_${profile.userid}_${Date.now()}.jpg`,
-      });
+      const response = await Api.clockIn(String(profile.userid));
 
-      const response = await Api.clockIn(formData);
+      console.log(
+        '[FaceDetection] clockIn response:',
+        JSON.stringify(response),
+      );
 
       if (response?.success) {
-        const checkInTIme = response?.data?.[0]?.check_in;
-        if (checkInTIme) {
-          await Storage.updateCheckIn(checkInTIme);
-        }
-
-        const currentProfile = await Storage.getProfile();
-        const profile = Array.isArray(currentProfile)
-          ? currentProfile
-          : [currentProfile];
-        profile[0].checkin_userid = String(profile[0].userid); // tandai sudah clock in
-        await Storage.setProfile(profile);
-
-        try {
-          await setBrightnessLevel(0.5); // 0.5 adalah 50% kecerahan, sesuaikan dengan kebutuhan
-        } catch (e) {
-          console.warn('Gagal mengembalikan kecerahan setelah clockin:', e);
-        }
-
-        Alert.alert('Sukses', 'Presensi masuk berhasil dicatat!');
+        Alert.alert('Sukses', 'Absensi berhasil dicatat!');
         navigation.replace('MainTabs', { screen: 'Home' });
       } else {
         Alert.alert(
@@ -661,7 +445,7 @@ export default function FaceDetectionScreen() {
       ? '#eab308'
       : faceStatus.detected
       ? '#3b82f6'
-      : '#ececec';
+      : '#e5e7eb';
 
   const currentChallengeId = challenges[currentStep];
 
@@ -701,7 +485,7 @@ export default function FaceDetectionScreen() {
       {/* Header */}
       <View className="flex-row items-center justify-between px-5 pt-[52px] pb-[14px] border-b border-gray-100 bg-white">
         <TouchableOpacity
-          onPress={handleGoBack}
+          onPress={() => navigation.goBack()}
           className="w-9 h-9 items-center justify-center"
         >
           <ArrowLeft size={22} color="#1f2937" />
@@ -713,7 +497,7 @@ export default function FaceDetectionScreen() {
       </View>
 
       <View className="flex-1 px-5 pt-5">
-        {/* Step indicators */}
+        {/* Step indicators — hanya tampil saat challenge belum selesai */}
         {!isFinished && (
           <StepIndicator
             challenges={challenges}
@@ -735,7 +519,7 @@ export default function FaceDetectionScreen() {
               backgroundColor: '#f3f4f6',
             }}
           >
-            {showCamera && isFocused && device && (
+            {showCamera && device && (
               <Camera
                 ref={cameraRef}
                 style={{
@@ -746,23 +530,10 @@ export default function FaceDetectionScreen() {
                   bottom: 0,
                 }}
                 device={device}
-                isActive={showCamera && isFocused && verifyState !== 'ok'}
+                isActive={showCamera && verifyState !== 'ok'}
                 photo
                 pixelFormat="yuv"
                 frameProcessor={isFinished ? undefined : frameProcessor}
-                onError={error => {
-                  console.warn('[FaceDetection] Camera error:', error.code);
-                  if (
-                    error.code === 'system/camera-is-restricted' ||
-                    error.code === 'system/camera-already-in-use' ||
-                    error.code === 'system/no-camera-manager'
-                  ) {
-                    setShowCamera(false);
-                    setTimeout(() => {
-                      if (isFocused) setShowCamera(true);
-                    }, 1200);
-                  }
-                }}
               />
             )}
 
@@ -797,6 +568,7 @@ export default function FaceDetectionScreen() {
               </View>
             )}
 
+            {/* Overlay: no face detected */}
             {showCamera &&
               !faceStatus.detected &&
               !isCapturing &&
@@ -808,30 +580,40 @@ export default function FaceDetectionScreen() {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    backgroundColor: 'rgba(0,0,0,0.4)',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 8,
-                    paddingHorizontal: 20,
                   }}
                 >
-                  <CircleDot size={26} color="#fff" />
+                  <CircleDot size={28} color="rgba(255,255,255,0.8)" />
                   <Text
                     style={{
-                      color: '#fff',
+                      color: 'rgba(255,255,255,0.75)',
                       fontSize: 12,
-                      fontWeight: '600',
+                      fontWeight: '500',
                       textAlign: 'center',
-                      lineHeight: 18,
                     }}
                   >
-                    {faceMessage}
+                    Arahkan wajah ke kamera
                   </Text>
                 </View>
               )}
           </View>
 
-          <View className="mt-2.5" />
+          {/* Face detected indicator */}
+          <View className="flex-row items-center gap-x-1.5 mt-2.5">
+            <CircleDot
+              size={14}
+              color={faceStatus.detected ? '#22c55e' : '#d1d5db'}
+            />
+            <Text
+              className={`text-[12px] font-medium ${
+                faceStatus.detected ? 'text-green-700' : 'text-gray-400'
+              }`}
+            >
+              {faceStatus.detected ? 'Wajah terdeteksi' : 'Tidak ada wajah'}
+            </Text>
+          </View>
         </View>
 
         {/* Status card */}
@@ -854,7 +636,7 @@ export default function FaceDetectionScreen() {
           )}
         </View>
 
-        {/* Info cards */}
+        {/* Info cards: shift & lokasi */}
         <View className="flex-row gap-x-3">
           <View className="flex-1 bg-white border border-gray-100 rounded-2xl p-3.5 shadow-sm">
             <View className="flex-row items-center gap-x-1.5 mb-1">
@@ -882,7 +664,7 @@ export default function FaceDetectionScreen() {
               className="text-[12px] font-bold text-slate-800"
               numberOfLines={1}
             >
-              {user?.event_locations || 'Tidak ada lokasi'}
+              Kantor Pusat (Radius In)
             </Text>
           </View>
         </View>
@@ -890,6 +672,7 @@ export default function FaceDetectionScreen() {
 
       {/* Bottom buttons */}
       <View className="px-5 pb-11 pt-3 gap-y-3">
+        {/* Retry button — muncul kalau verifikasi gagal */}
         {verifyState === 'fail' && (
           <TouchableOpacity
             onPress={resetFlow}
@@ -902,6 +685,7 @@ export default function FaceDetectionScreen() {
           </TouchableOpacity>
         )}
 
+        {/* Submit button */}
         <TouchableOpacity
           disabled={verifyState !== 'ok' || loading}
           onPress={handleClockIn}
@@ -919,12 +703,12 @@ export default function FaceDetectionScreen() {
               }`}
             >
               {verifyState === 'ok'
-                ? 'Submit Presensi Masuk'
+                ? 'Submit Attendance'
                 : verifyState === 'verifying'
                 ? 'Memverifikasi Wajah...'
                 : verifyState === 'fail'
                 ? 'Verifikasi Gagal'
-                : `Lakukan: ${CHALLENGE_CONFIG[currentChallengeId]?.label}`}
+                : 'Selesaikan Verifikasi...'}
             </Text>
           )}
         </TouchableOpacity>
