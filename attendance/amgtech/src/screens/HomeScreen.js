@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
@@ -15,7 +15,6 @@ import {
   CheckCircle2,
   AlertCircle,
   TrendingUp,
-  Ellipsis,
   ArrowRightToLine,
 } from 'lucide-react-native';
 import Geolocation from '@react-native-community/geolocation';
@@ -26,10 +25,10 @@ import { useNavigation } from '@react-navigation/native';
 
 function StatCard({ title, value, icon: Icon, gradient, trend, trendValue }) {
   return (
-    <View className="bg-white rounded-3xl shadow-lg p-5 mb-4">
+    <View className="bg-white rounded-2xl shadow-lg p-5 mb-4">
       <View className="flex-row justify-between items-start mb-3">
         <View className={`p-3 rounded-2xl ${gradient}`}>
-          <Icon size={24} color="white" strokeWidth={2.5} />
+          <Icon size={24} color="white" strokeWidth={1.5} />
         </View>
         {trend && (
           <View className="flex-row items-center bg-green-50 px-2 py-1 rounded-full">
@@ -48,6 +47,7 @@ function StatCard({ title, value, icon: Icon, gradient, trend, trendValue }) {
 
 export default function HomeScreen({ setToken }) {
   const [user, setUser] = useState(null);
+  const [allUserEvents, setAllUserEvents] = useState([]);
   const [workOrders, setWorkOrders] = useState([]);
   const navigation = useNavigation();
   const [refreshing, setRefreshing] = useState(false);
@@ -59,26 +59,38 @@ export default function HomeScreen({ setToken }) {
     completed: 'Counting...',
   });
 
+  const {
+    hasPermission: hasCameraPermission,
+    requestPermission: requestCameraPermission,
+  } = useCameraPermission();
+
   const refreshProfile = async () => {
     try {
       const savedCredentials = await Storage.getCredentials();
-      console.log('Kredensial tersimpan:', savedCredentials);
-
-      if (!savedCredentials || !savedCredentials.username) {
-        console.log('Kredensial tidak ditemukan');
-        return null;
-      }
+      if (!savedCredentials || !savedCredentials.username) return null;
 
       const formData = new FormData();
       formData.append('username', savedCredentials.username);
       formData.append('pass', savedCredentials.password);
 
       const response = await Api.formDataPost('login', formData);
-      console.log('Response Refresh API:', response);
 
       if (response?.success && response?.data?.length > 0) {
         await Storage.setProfile(response.data);
-        setUser({ ...response.data[0] });
+
+        setAllUserEvents(response.data);
+
+        const activeJob =
+          response.data.find(
+            job =>
+              job.check_in &&
+              job.check_in !== '' &&
+              (!job.check_out || job.check_out === ''),
+          ) ||
+          response.data.find(job => !job.check_in || job.check_in === '') ||
+          response.data[0];
+
+        setUser({ ...activeJob });
         return response.data;
       }
       return null;
@@ -90,22 +102,12 @@ export default function HomeScreen({ setToken }) {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-
     const latestProfile = await refreshProfile();
-
     await getAllWorkOrders(latestProfile);
-
     setRefreshing(false);
   }, []);
 
-  const {
-    hasPermission: hasCameraPermission,
-    requestPermission: requestCameraPermission,
-  } = useCameraPermission();
-
   const requestAllPermissions = useCallback(async () => {
-    console.log(' Requesting permissions...');
-
     if (Platform.OS === 'android') {
       try {
         const locationGranted = await PermissionsAndroid.request(
@@ -120,7 +122,6 @@ export default function HomeScreen({ setToken }) {
         );
 
         if (locationGranted === PermissionsAndroid.RESULTS.GRANTED) {
-          console.log('✓ Location permission granted');
           Geolocation.getCurrentPosition(
             position => {
               console.log(
@@ -134,8 +135,6 @@ export default function HomeScreen({ setToken }) {
             },
             { enableHighAccuracy: false, timeout: 10000, maximumAge: 10000 },
           );
-        } else {
-          console.log('⚠️ Location permission denied');
         }
       } catch (err) {
         console.warn('Location permission error:', err);
@@ -146,17 +145,10 @@ export default function HomeScreen({ setToken }) {
 
     if (!hasCameraPermission) {
       try {
-        const cameraGranted = await requestCameraPermission();
-        if (cameraGranted) {
-          console.log('✓ Camera permission granted');
-        } else {
-          console.log('⚠️ Camera permission denied');
-        }
+        await requestCameraPermission();
       } catch (err) {
         console.warn('Camera permission error:', err);
       }
-    } else {
-      console.log('✓ Camera permission already granted');
     }
   }, [hasCameraPermission, requestCameraPermission]);
 
@@ -175,11 +167,11 @@ export default function HomeScreen({ setToken }) {
 
       while (hasMore) {
         const params = {
-          loginID: data[0]['userid'], 
+          loginID: data[0]['userid'],
           page: page,
           limit: 1000,
         };
-        
+
         const response = await Api.post('getworkorder', params);
         const allWorkOrders = response?.data || [];
 
@@ -226,8 +218,13 @@ export default function HomeScreen({ setToken }) {
 
         const profile = await Storage.getProfile();
         if (Array.isArray(profile) && profile.length > 0) {
-          setUser({ ...profile[0] });
-        } else {
+          setAllUserEvents(profile);
+          const activeJob =
+            profile.find(job => !job.check_out || job.check_out === '') ||
+            profile[0];
+          setUser({ ...activeJob });
+        } else if (profile) {
+          setAllUserEvents([profile]);
           setUser({ ...profile });
         }
 
@@ -239,32 +236,49 @@ export default function HomeScreen({ setToken }) {
     }, [requestAllPermissions]),
   );
 
-  const stats = [
-    {
-      title: 'Total Work Orders',
-      value: stat.total,
-      icon: Briefcase,
-      gradient: 'bg-gradient-to-br from-indigo-500 to-indigo-600',
-    },
-    {
-      title: 'In Progress',
-      value: stat.inProgress,
-      icon: Clock,
-      gradient: 'bg-gradient-to-br from-amber-500 to-orange-500',
-    },
-    {
-      title: 'Completed',
-      value: stat.completed,
-      icon: CheckCircle2,
-      gradient: 'bg-gradient-to-br from-emerald-500 to-green-600',
-    },
-    {
-      title: 'Open',
-      value: stat.open,
-      icon: AlertCircle,
-      gradient: 'bg-gradient-to-br from-red-500 to-red-600',
-    },
-  ];
+  const canCheckIn = event => {
+    if (!event?.startdate) return false;
+
+    const startDate = new Date(event.startdate.replace(' ', 'T'));
+
+    if (isNaN(startDate.getTime())) return false;
+
+    const allowedTime = new Date(startDate.getTime() - 15 * 60 * 1000);
+
+    return new Date() >= allowedTime;
+  };
+
+  const getPendingEvent = () => {
+    if (!allUserEvents || allUserEvents.length === 0) return null;
+
+    const eligible = allUserEvents.filter(
+      job =>
+        job.faceid &&
+        job.faceid !== '' &&
+        job.statusregister === '0' &&
+        job.traneventid &&
+        job.traneventid !== '',
+    );
+
+    if (eligible.length === 0) return null;
+
+    const activeClockIn = eligible.find(
+      job =>
+        job.check_in &&
+        job.check_in !== '' &&
+        (!job.check_out || job.check_out === ''),
+    );
+
+    if (activeClockIn) {
+      return activeClockIn;
+    }
+
+    const notCheckedIn = eligible.find(
+      job => (!job.check_in || job.check_in === '') && canCheckIn(job),
+    );
+
+    return notCheckedIn || null;
+  };
 
   const formatPresensi = dateTimeStr => {
     if (!dateTimeStr || dateTimeStr === '') return '-';
@@ -283,9 +297,34 @@ export default function HomeScreen({ setToken }) {
     return `${tanggal} (${jam})`;
   };
 
+  const stats = [
+    {
+      title: 'Total Jadwal',
+      value: stat.total,
+      icon: Briefcase,
+      gradient: 'bg-gradient-to-br from-indigo-500 to-indigo-600',
+    },
+    {
+      title: 'In Progress',
+      value: stat.inProgress,
+      icon: Clock,
+      gradient: 'bg-gradient-to-br from-amber-500 to-orange-500',
+    },
+    {
+      title: 'Completed',
+      value: stat.completed,
+      icon: CheckCircle2,
+      gradient: 'bg-gradient-to-br from-emerald-500 to-green-600',
+    },
+  ];
+
+  const pendingEvent = getPendingEvent();
+  const needsClockIn =
+    pendingEvent && (!pendingEvent.check_in || pendingEvent.check_in === '');
+
   return (
     <View className="flex-1 bg-gray-50">
-      {/* Header with Gradient */}
+      {/* Header */}
       <View className="bg-gray-600 pt-10 pb-8 px-5 rounded-b-[32px] shadow-xl">
         <View className="flex-row justify-between items-center mb-6">
           <View>
@@ -299,41 +338,38 @@ export default function HomeScreen({ setToken }) {
         </View>
       </View>
 
+      {/* Event aktif & presensi card */}
       <View className="px-3 -mt-8">
         <View
           style={{ zIndex: 10 }}
-          className="bg-white rounded-3xl shadow-xl p-6 flex-row justify-center items-center"
+          className="bg-white rounded-3xl shadow-xl p-4 flex-row justify-center items-center"
         >
           <View className="flex-column items-center">
-            <Text className="text-gray-900 text-md text-center font-bold">
-              Jadwal Anda Hari Ini
-            </Text>
+            {user?.current_event_name ? (
+              <Text className="text-gray-900 text-md text-center font-bold">
+                Acara: {user.current_event_name}
+              </Text>
+            ) : (
+              <Text className="text-gray-500 text-md text-center font-bold">
+                Tidak ada jadwal 
+              </Text>
+            )}
             <View className="flex-row items-center mt-2">
-              <ArrowRightToLine
-                size={18}
-                color="black"
-                strokeWidth={2}
-                style={{ marginLeft: 2 }}
-              />
-              <Text className="text-gray-700 text-lg ml-2 font-bold">
-                08:00 AM
-              </Text>
-              <Ellipsis
-                size={18}
-                color="gray"
-                strokeWidth={2}
-                style={{ marginHorizontal: 8 }}
-              />
-              <ArrowRightToLine
-                size={18}
-                color="black"
-                strokeWidth={2}
-                style={{ marginLeft: 2 }}
-              />
-              <Text className="text-gray-700 text-lg ml-2 font-bold">
-                17:00 PM
-              </Text>
+              {user?.event_locations && (
+                <Text className="text-gray-500 text-xs mt-2 font-bold">
+                  Lokasi : {user?.event_locations}
+                </Text>
+              )}
             </View>
+
+            {/* Tampilkan jumlah event jika lebih dari 1
+            {allUserEvents.length > 1 && (
+              <View className="mt-2 bg-indigo-50 px-3 py-1 rounded-full">
+                <Text className="text-indigo-600 text-xs font-bold">
+                  {allUserEvents.length} jadwal aktif hari ini
+                </Text>
+              </View>
+            )} */}
           </View>
         </View>
 
@@ -364,6 +400,7 @@ export default function HomeScreen({ setToken }) {
         </View>
       </View>
 
+      {/* Scrollable content */}
       <ScrollView
         className="flex-1 px-5"
         contentContainerStyle={{ paddingTop: 2, paddingBottom: 20 }}
@@ -372,8 +409,7 @@ export default function HomeScreen({ setToken }) {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#4f46e5']} // Android
-            tintColor="#4f46e5" // iOS
+            colors={['#4f46e5']}
           />
         }
       >
@@ -495,34 +531,32 @@ export default function HomeScreen({ setToken }) {
         </TouchableOpacity>
       )}
 
-      {user?.faceid &&
-        user?.faceid !== '' &&
-        user?.statusregister === '0' &&
-        user?.event_userid &&
-        user?.event_userid !== '' &&
-        (!user?.last_check_out || user?.last_check_out === '') &&
-        (!user?.check_out || user?.check_out === '') && (
-          <TouchableOpacity
-            className="px-3 py-4 bg-black border-t border-gray-200 mb-4 rounded-full mx-5 flex-row justify-center items-center"
-            onPress={() =>
-             user?.check_in !== ''
-                ? navigation.navigate('ClockOut')
-                : navigation.navigate('FaceDetection')
+      {pendingEvent && (
+        <TouchableOpacity
+          className="px-3 py-4 bg-black border-t border-gray-200 mb-4 rounded-full mx-5 flex-row justify-center items-center"
+          onPress={() => {
+            if (needsClockIn) {
+              navigation.navigate('FaceDetection', {
+                currentEventId: pendingEvent.traneventid,
+              });
+            } else {
+              navigation.navigate('ClockOut', {
+                currentEventId: pendingEvent.traneventid,
+              });
             }
-          >
-            <ArrowRightToLine
-              size={20}
-              color="white"
-              strokeWidth={2}
-              style={{ marginRight: 2 }}
-            />
-            <Text className="text-white text-lg font-bold ml-2">
-              {user?.check_in !== ''
-                ? 'Presensi Keluar'
-                : 'Presensi Masuk'}
-            </Text>
-          </TouchableOpacity>
-        )}
+          }}
+        >
+          <ArrowRightToLine
+            size={20}
+            color="white"
+            strokeWidth={2}
+            style={{ marginRight: 2 }}
+          />
+          <Text className="text-white text-lg font-bold ml-2">
+            {needsClockIn ? 'Presensi Masuk' : 'Presensi Keluar'}
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }

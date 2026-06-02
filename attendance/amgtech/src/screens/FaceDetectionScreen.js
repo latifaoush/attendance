@@ -607,6 +607,7 @@ export default function FaceDetectionScreen() {
       formData.append('userid', String(profile.userid));
       formData.append('latitude', String(latitude));
       formData.append('longitude', String(longitude));
+      formData.append('traneventid', String(profile.traneventid));
       formData.append('image', {
         uri: verifiedPhotoUri,
         type: 'image/jpeg',

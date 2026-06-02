@@ -3,7 +3,6 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-// import Icon from 'react-native-vector-icons/FontAwesome5';
 import { getToken } from '../utils/auth';
 import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
@@ -30,26 +29,25 @@ function MainTabs({ setToken }) {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
 
-          if (route.name === 'Home')
+          if (route.name === 'Beranda')
             iconName = focused ? 'home' : 'home-outline';
-
-          else if (route.name === 'Schedule')
+          else if (route.name === 'Jadwal')
             iconName = focused ? 'clipboard' : 'clipboard-outline';
-
-          else if (route.name === 'Profile')
+          else if (route.name === 'Profil')
             iconName = focused ? 'person' : 'person-outline';
-         
-          else if (route.name === 'History')
+          else if (route.name === 'Aktivitas')
             iconName = focused ? 'time' : 'time-outline';
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Schedule" component={WorkOrderScreen} />
-      <Tab.Screen name="History" component={HistoryScreen} />
-      <Tab.Screen name="Profile">
+      <Tab.Screen name="Beranda">
+        {props => <HomeScreen {...props} setToken={setToken} />}
+      </Tab.Screen>
+      <Tab.Screen name="Jadwal" component={WorkOrderScreen} />
+      <Tab.Screen name="Aktivitas" component={HistoryScreen} />
+      <Tab.Screen name="Profil">
         {props => <ProfileScreen {...props} setToken={setToken} />}
       </Tab.Screen>
     </Tab.Navigator>
@@ -67,7 +65,7 @@ export default function AppNavigator() {
   }, []);
 
   if (loading) {
-    return null; 
+    return null;
   }
 
   return (

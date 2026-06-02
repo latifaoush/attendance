@@ -20,7 +20,13 @@ import {
 import { useState, useEffect, useCallback } from 'react';
 import Api from '../utils/Api';
 
-function InfoCard({ icon, label, value, valueColor = 'text-gray-800', accent = false }) {
+function InfoCard({
+  icon,
+  label,
+  value,
+  valueColor = 'text-gray-800',
+  accent = false,
+}) {
   return (
     <View
       className={`flex-row items-center rounded-2xl px-4 py-4 mb-2.5 ${
@@ -96,11 +102,7 @@ function TimeBlock({ label, time, isEmpty, isLate }) {
       )}
       <Text
         className={`text-[22px] font-extrabold mt-1 ${
-          isEmpty
-            ? 'text-gray-300'
-            : isLate
-            ? 'text-red-500'
-            : 'text-gray-800'
+          isEmpty ? 'text-gray-300' : isLate ? 'text-red-500' : 'text-gray-800'
         }`}
       >
         {isEmpty ? '--:--' : time}
@@ -156,17 +158,39 @@ export default function HistoryDetailScreen() {
   }, [fetchDetail]);
 
   const dateObj = item ? new Date(item.leavedate) : null;
-  const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const dayNames = [
+    'Minggu',
+    'Senin',
+    'Selasa',
+    'Rabu',
+    'Kamis',
+    'Jumat',
+    'Sabtu',
+  ];
   const monthNames = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+    'Januari',
+    'Februari',
+    'Maret',
+    'April',
+    'Mei',
+    'Juni',
+    'Juli',
+    'Agustus',
+    'September',
+    'Oktober',
+    'November',
+    'Desember',
   ];
   const fullDate = dateObj
-    ? `${dayNames[dateObj.getDay()]}, ${dateObj.getDate()} ${monthNames[dateObj.getMonth()]} ${dateObj.getFullYear()}`
+    ? `${dayNames[dateObj.getDay()]}, ${dateObj.getDate()} ${
+        monthNames[dateObj.getMonth()]
+      } ${dateObj.getFullYear()}`
     : '-';
 
   const checkInTime = item?.check_in ? item.check_in.substring(11, 16) : null;
-  const checkOutTime = item?.check_out ? item.check_out.substring(11, 16) : null;
+  const checkOutTime = item?.check_out
+    ? item.check_out.substring(11, 16)
+    : null;
   const isLate = !!item?.late_duration;
   const isOvertime = !!item?.overtime_duration;
   const hasLocation = item?.latitude && item?.longitude;
@@ -175,7 +199,7 @@ export default function HistoryDetailScreen() {
     <View className="flex-1 bg-gray-50">
       {/* Header */}
       <View
-        className="bg-gray-700 pt-14 pb-5 px-5 rounded-b-[32px] shadow-xl"
+        className="bg-gray-500 pt-14 pb-5 px-5 rounded-b-[32px] shadow-xl"
         style={{
           shadowColor: '#374151',
           shadowOffset: { width: 0, height: 4 },
@@ -261,7 +285,9 @@ export default function HistoryDetailScreen() {
           <Text className="text-gray-700 text-base font-semibold text-center mb-1">
             Oops, terjadi masalah
           </Text>
-          <Text className="text-gray-400 text-sm text-center mb-6">{error}</Text>
+          <Text className="text-gray-400 text-sm text-center mb-6">
+            {error}
+          </Text>
           <TouchableOpacity
             className="bg-gray-700 px-8 py-3 rounded-2xl"
             onPress={fetchDetail}
@@ -313,6 +339,15 @@ export default function HistoryDetailScreen() {
               accent={false}
             />
           )}
+
+          <SectionTitle title="Tahap" />
+          <InfoCard
+            icon={<MapPin size={18} color="#4b5563" />}
+            label="Tahap"
+            value={item.eventtypeid === '0' ? 'Setup' 
+              : item.eventtypeid === '1' ? 'Event'
+              : item.eventtypeid === '2' ? 'Bongkar' : 'Lainnya'}
+          />
 
           {/* Lokasi */}
           <SectionTitle title="Lokasi" />
@@ -376,9 +411,7 @@ export default function HistoryDetailScreen() {
               </View>
             </View>
           ) : (
-            <View
-              className="bg-white rounded-3xl px-4 py-10 mb-3 items-center border border-dashed border-gray-200"
-            >
+            <View className="bg-white rounded-3xl px-4 py-10 mb-3 items-center border border-dashed border-gray-200">
               <View className="w-16 h-16 bg-gray-50 rounded-2xl items-center justify-center mb-3">
                 <Camera size={28} color="#d1d5db" />
               </View>
