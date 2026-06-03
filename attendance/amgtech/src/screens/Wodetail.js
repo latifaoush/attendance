@@ -118,7 +118,7 @@ export default function WorkOrderDetailScreen({ route, navigation }) {
         {/* Customer Info */}
         <View className="bg-white rounded-2xl shadow-lg p-5 mb-4">
           <Text className="text-gray-900 text-lg font-bold mb-4">
-            Event Information
+            Informasi Acara
           </Text>
 
           <View className="space-y-3">
@@ -157,7 +157,7 @@ export default function WorkOrderDetailScreen({ route, navigation }) {
             <InfoRow
               icon={<Wrench size={20} color="#4f46e5" strokeWidth={2.5} />}
               bgColor="bg-indigo-100"
-              label="Tipe Event"
+              label="Tahap"
               value={detail?.type}
             />
             <InfoRow

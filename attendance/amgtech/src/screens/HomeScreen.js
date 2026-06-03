@@ -248,6 +248,17 @@ export default function HomeScreen({ setToken }) {
     return new Date() >= allowedTime;
   };
 
+  const canCheckOut = event => {
+    if (!event?.enddate) return false;
+
+    const endDate = new Date(event.enddate.replace(' ', 'T'));
+    if (isNaN(endDate.getTime())) return false;
+
+    const allowedTime = endDate; // Bisa check-out mulai dari waktu enddate
+
+    return new Date() >= allowedTime;
+  };
+
   const getPendingEvent = () => {
     if (!allUserEvents || allUserEvents.length === 0) return null;
 
@@ -347,11 +358,11 @@ export default function HomeScreen({ setToken }) {
           <View className="flex-column items-center">
             {user?.current_event_name ? (
               <Text className="text-gray-900 text-md text-center font-bold">
-                Acara: {user.current_event_name}
+                Jadwal Acara: {user.current_event_name}
               </Text>
             ) : (
               <Text className="text-gray-500 text-md text-center font-bold">
-                Tidak ada jadwal 
+                Tidak ada jadwal
               </Text>
             )}
             <View className="flex-row items-center mt-2">
@@ -429,7 +440,7 @@ export default function HomeScreen({ setToken }) {
         <View className="mb-8">
           <View className="flex-row justify-between items-center mb-4">
             <Text className="text-gray-900 text-lg font-bold">
-              Aktivitas Terbaru
+              Jadwal Terbaru
             </Text>
           </View>
 
@@ -531,32 +542,45 @@ export default function HomeScreen({ setToken }) {
         </TouchableOpacity>
       )}
 
-      {pendingEvent && (
-        <TouchableOpacity
-          className="px-3 py-4 bg-black border-t border-gray-200 mb-4 rounded-full mx-5 flex-row justify-center items-center"
-          onPress={() => {
-            if (needsClockIn) {
-              navigation.navigate('FaceDetection', {
-                currentEventId: pendingEvent.traneventid,
-              });
-            } else {
-              navigation.navigate('ClockOut', {
-                currentEventId: pendingEvent.traneventid,
-              });
-            }
-          }}
-        >
-          <ArrowRightToLine
-            size={20}
-            color="white"
-            strokeWidth={2}
-            style={{ marginRight: 2 }}
-          />
-          <Text className="text-white text-lg font-bold ml-2">
-            {needsClockIn ? 'Presensi Masuk' : 'Presensi Keluar'}
-          </Text>
-        </TouchableOpacity>
-      )}
+      {pendingEvent &&
+        (() => {
+          const isCheckoutDisabled =
+            !needsClockIn && !canCheckOut(pendingEvent);
+
+          return (
+            <TouchableOpacity
+              className={`px-3 py-4 border-t border-gray-200 mb-4 rounded-full mx-5 flex-row justify-center items-center ${
+                isCheckoutDisabled ? 'bg-gray-400' : 'bg-black'
+              }`}
+              disabled={isCheckoutDisabled} 
+              onPress={() => {
+                if (needsClockIn) {
+                  navigation.navigate('FaceDetection', {
+                    currentEventId: pendingEvent.traneventid,
+                  });
+                } else {
+                  navigation.navigate('ClockOut', {
+                    currentEventId: pendingEvent.traneventid,
+                  });
+                }
+              }}
+            >
+              <ArrowRightToLine
+                size={20}
+                color="white"
+                strokeWidth={2}
+                style={{ marginRight: 2 }}
+              />
+              <Text className="text-white text-lg font-bold ml-2">
+                {needsClockIn
+                  ? 'Presensi Masuk'
+                  : isCheckoutDisabled
+                  ? 'Belum Waktu Keluar'
+                  : 'Presensi Keluar'}
+              </Text>
+            </TouchableOpacity>
+          );
+        })()}
     </View>
   );
 }

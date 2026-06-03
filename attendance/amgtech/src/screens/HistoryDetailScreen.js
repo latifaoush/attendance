@@ -329,7 +329,7 @@ export default function HistoryDetailScreen() {
               isLate={false}
             />
           </View>
-
+{/* 
           {item.overtime_duration && (
             <InfoCard
               icon={<CheckCircle size={18} color="#eab308" />}
@@ -338,16 +338,33 @@ export default function HistoryDetailScreen() {
               valueColor="text-yellow-600"
               accent={false}
             />
-          )}
+          )} */}
 
-          <SectionTitle title="Tahap" />
-          <InfoCard
+          <SectionTitle title="Informasi Event" />
+         <View>
+           <InfoCard
             icon={<MapPin size={18} color="#4b5563" />}
             label="Tahap"
             value={item.eventtypeid === '0' ? 'Setup' 
               : item.eventtypeid === '1' ? 'Event'
               : item.eventtypeid === '2' ? 'Bongkar' : 'Lainnya'}
           />
+          <InfoCard
+            icon={<MapPin size={18} color="#4b5563" />}
+            label="Nama Event"
+            value={item.eventname ?? 'Tidak tersedia'}
+          />
+          <InfoCard
+            icon={<MapPin size={18} color="#4b5563" />}
+            label="Lokasi"
+            value={item.locations ?? 'Tidak tersedia'}
+          />
+          <InfoCard
+            icon={<MapPin size={18} color="#4b5563" />}
+            label="Customer"
+            value={item.customer ?? 'Tidak tersedia'}
+          />
+         </View>
 
           {/* Lokasi */}
           <SectionTitle title="Lokasi" />
