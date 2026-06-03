@@ -94,7 +94,7 @@ export default function WorkOrderDetailScreen({ route, navigation }) {
   return (
     <View className="flex-1 bg-gray-50">
       {/* Header */}
-      <View className="bg-gray-600 pt-12 pb-6 px-5 rounded-b-[32px] shadow-xl">
+      <View className="bg-gray-800 pt-12 pb-6 px-5 rounded-b-[32px] shadow-xl">
         <View className="flex-row items-center mb-4">
           <TouchableOpacity
             onPress={() => navigation.goBack()}

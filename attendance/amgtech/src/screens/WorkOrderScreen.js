@@ -195,7 +195,7 @@ export default function WorkOrderScreen({ navigation }) {
 
   return (
     <View className="flex-1 bg-gray-50">
-      <View className="bg-gray-600 pt-12 pb-8 px-5 rounded-b-[32px] shadow-xl">
+      <View className="bg-gray-800 pt-12 pb-8 px-5 rounded-b-[32px] shadow-xl">
         <Text className="text-white text-2xl font-bold tracking-wide">
           Daftar Jadwal
         </Text>

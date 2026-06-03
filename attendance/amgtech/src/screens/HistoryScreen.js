@@ -175,7 +175,7 @@ export default function HistoryScreen() {
     <View className="flex-1 bg-gray-50">
       {/* Header */}
       <View
-        className="bg-gray-500 pt-14 pb-5 px-5 rounded-b-[32px] shadow-xl"
+        className="bg-gray-800 pt-14 pb-5 px-5 rounded-b-[32px] shadow-xl"
         style={{
           shadowColor: '#374151',
           shadowOffset: { width: 0, height: 4 },
