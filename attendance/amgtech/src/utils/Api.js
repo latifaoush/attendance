@@ -285,12 +285,13 @@ class Api {
     }
   };
 
-  static getLeaveDetail = async leaveid => {
+  static getLeaveDetail = async (leaveid, type = 'masuk') => {
     const url = `${base_url}/detail`;
 
     try {
       const formData = new FormData();
       formData.append('leaveid', leaveid);
+      formData.append('type', type);
 
       const resp = await fetch(url, {
         method: 'POST',

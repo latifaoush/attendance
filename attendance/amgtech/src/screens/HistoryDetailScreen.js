@@ -16,52 +16,10 @@ import {
   Calendar,
   Navigation,
   Layers,
-  User,
   Tag,
 } from 'lucide-react-native';
 import { useState, useEffect, useCallback } from 'react';
 import Api from '../utils/Api';
-
-function InfoCard({
-  icon,
-  label,
-  value,
-  valueColor = 'text-gray-800',
-  accent = false,
-}) {
-  return (
-    <View
-      className={`flex-row items-center rounded-2xl px-4 py-3.5 mb-2 ${
-        accent
-          ? 'bg-gray-50 border border-gray-200'
-          : 'bg-white border border-gray-100'
-      }`}
-      style={{
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 6,
-        elevation: 2,
-      }}
-    >
-      <View className="w-9 h-9 rounded-xl bg-gray-100 items-center justify-center mr-3">
-        {icon}
-      </View>
-      <View className="flex-1">
-        <Text
-          className="text-[10px] font-semibold text-gray-400 uppercase mb-0.5"
-          style={{ letterSpacing: 0.8 }}
-        >
-          {label}
-        </Text>
-        <Text className={`text-[14px] font-bold leading-tight ${valueColor}`}>
-          {value || '—'}
-        </Text>
-      </View>
-      <View className="w-1.5 h-1.5 rounded-full bg-gray-200" />
-    </View>
-  );
-}
 
 function SectionTitle({ title, icon }) {
   return (
@@ -80,7 +38,7 @@ function SectionTitle({ title, icon }) {
   );
 }
 
-function TimeBlock({ label, time, isEmpty, isLate }) {
+function TimeBlock({ label, time, isEmpty, isLate, isOvertime }) {
   return (
     <View
       className="flex-1 bg-white rounded-2xl items-center border border-gray-100 overflow-hidden"
@@ -95,7 +53,7 @@ function TimeBlock({ label, time, isEmpty, isLate }) {
       {/* Top color strip */}
       <View
         className={`w-full h-1 ${
-          isEmpty ? 'bg-gray-200' : isLate ? 'bg-red-400' : 'bg-emerald-400'
+          isEmpty ? 'bg-gray-200' : isLate ? 'bg-red-400' : isOvertime ? 'bg-orange-400' : 'bg-emerald-400'
         }`}
       />
 
@@ -109,12 +67,12 @@ function TimeBlock({ label, time, isEmpty, isLate }) {
 
         <View
           className={`w-12 h-12 rounded-2xl items-center justify-center mb-2.5 ${
-            isEmpty ? 'bg-gray-100' : isLate ? 'bg-red-50' : 'bg-emerald-50'
+            isEmpty ? 'bg-gray-100' : isLate ? 'bg-red-50' : isOvertime ? 'bg-orange-50' : 'bg-emerald-50'
           }`}
         >
           <Clock
             size={20}
-            color={isEmpty ? '#d1d5db' : isLate ? '#ef4444' : '#10b981'}
+            color={isEmpty ? '#d1d5db' : isLate ? '#ef4444' : isOvertime ? '#f97316' : '#10b981'}
           />
         </View>
 
@@ -124,6 +82,8 @@ function TimeBlock({ label, time, isEmpty, isLate }) {
               ? 'text-gray-300'
               : isLate
               ? 'text-red-500'
+              : isOvertime
+              ? 'text-orange-500'
               : 'text-gray-800'
           }`}
         >
@@ -132,7 +92,7 @@ function TimeBlock({ label, time, isEmpty, isLate }) {
 
         <View
           className={`mt-2 px-2.5 py-0.5 rounded-full ${
-            isEmpty ? 'bg-gray-100' : isLate ? 'bg-red-50' : 'bg-emerald-50'
+            isEmpty ? 'bg-gray-100' : isLate ? 'bg-red-50' : isOvertime ? 'bg-orange-50' : 'bg-emerald-50'
           }`}
         >
           <Text
@@ -141,41 +101,16 @@ function TimeBlock({ label, time, isEmpty, isLate }) {
                 ? 'text-gray-400'
                 : isLate
                 ? 'text-red-500'
+                : isOvertime
+                ? 'text-orange-500'
                 : 'text-emerald-600'
             }`}
             style={{ letterSpacing: 0.5 }}
           >
-            {isEmpty ? 'Belum absen' : isLate ? 'Terlambat' : 'Tepat waktu'}
+            {isEmpty ? 'Belum absen' : isLate ? 'Terlambat' : isOvertime ? 'Lembur' : 'Tepat waktu'}
           </Text>
         </View>
       </View>
-    </View>
-  );
-}
-
-function StatusBadge({ isEmpty, isLate }) {
-  if (isEmpty) return null;
-  return (
-    <View
-      className={`self-start flex-row items-center px-3 py-1.5 rounded-full mb-0 ${
-        isLate
-          ? 'bg-red-50 border border-red-100'
-          : 'bg-emerald-50 border border-emerald-100'
-      }`}
-    >
-      <View
-        className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
-          isLate ? 'bg-red-400' : 'bg-emerald-400'
-        }`}
-      />
-      <Text
-        className={`text-[10px] font-black uppercase ${
-          isLate ? 'text-red-500' : 'text-emerald-600'
-        }`}
-        style={{ letterSpacing: 0.5 }}
-      >
-        {isLate ? 'Terlambat' : 'Hadir'}
-      </Text>
     </View>
   );
 }
@@ -193,8 +128,9 @@ export default function HistoryDetailScreen() {
     try {
       setLoading(true);
       setError(null);
+
+      const response = await Api.getLeaveDetail(leaveid, type);
       
-      const response = await Api.getLeaveDetail(leaveid);
       if (response?.success && response?.data?.length > 0) {
         setItem(response.data[0]);
       } else {
@@ -206,7 +142,7 @@ export default function HistoryDetailScreen() {
     } finally {
       setLoading(false);
     }
-  }, [leaveid]);
+  }, [leaveid, type]);
 
   useEffect(() => {
     if (leaveid) fetchDetail();
@@ -236,6 +172,7 @@ export default function HistoryDetailScreen() {
     'November',
     'Desember',
   ];
+
   const fullDate = dateObj
     ? `${dayNames[dateObj.getDay()]}, ${dateObj.getDate()} ${
         monthNames[dateObj.getMonth()]
@@ -247,7 +184,8 @@ export default function HistoryDetailScreen() {
     ? item.check_out.substring(11, 16)
     : null;
   const isLate = !!item?.late_duration;
-  const hasLocation = item?.latitude && item?.longitude;
+  const isOvertime = !!item?.overtime_duration;
+  const hasLocation = item?.active_latitude && item?.active_longitude;
 
   return (
     <View className="flex-1 bg-gray-50">
@@ -376,11 +314,11 @@ export default function HistoryDetailScreen() {
               label="Jam Keluar"
               time={checkOutTime}
               isEmpty={!checkOutTime}
-              isLate={false}
+              isOvertime={isOvertime}
             />
           </View>
 
-          <SectionTitle title="Informasi Event" />
+          <SectionTitle title="Informasi Acara" />
           <View
             className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-2"
             style={{
@@ -438,7 +376,7 @@ export default function HistoryDetailScreen() {
                   className="text-[10px] font-semibold text-gray-400 uppercase mb-0.5"
                   style={{ letterSpacing: 0.8 }}
                 >
-                 Lokasi Acara
+                  Lokasi Acara
                 </Text>
                 <Text className="text-[14px] font-bold text-gray-800 font-mono">
                   {item.locations ?? '—'}
@@ -495,10 +433,10 @@ export default function HistoryDetailScreen() {
           {hasLocation && (
             <TouchableOpacity
               activeOpacity={0.85}
-              className="bg-gray-800 rounded-2xl px-5 py-4 mb-2 flex-row items-center justify-center border border-gray-700"
+              className="bg-gray-800 rounded-2xl px-3 py-2 mb-2 flex-row items-center justify-center border border-gray-700"
               onPress={() =>
                 Linking.openURL(
-                  `https://www.google.com/maps?q=${item.latitude},${item.longitude}`,
+                  `https://www.google.com/maps?q=${item.active_latitude},${item.active_longitude}`,
                 )
               }
               style={{

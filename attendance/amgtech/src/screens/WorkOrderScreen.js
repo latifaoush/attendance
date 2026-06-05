@@ -1,4 +1,3 @@
-// WorkOrderScreen.jsx
 import React, {
   useState,
   useRef,
@@ -15,7 +14,15 @@ import {
   ActivityIndicator,
   Animated,
 } from 'react-native';
-import { Search, X, Calendar, MapPin, User, Clock } from 'lucide-react-native';
+import {
+  Search,
+  X,
+  Calendar,
+  MapPin,
+  User,
+  Clock,
+  CalendarDays,
+} from 'lucide-react-native';
 import Api from '../utils/Api';
 import Storage from '../utils/Storage';
 
@@ -36,94 +43,141 @@ const formatDate = raw => {
   }
 };
 
+const EVENT_TYPE_LABEL = {
+  '0': 'Setup',
+  '1': 'Event',
+  '2': 'Bongkar',
+  '3': 'Antar',
+  '4': 'Tarik',
+};
+
+const EVENT_TYPE_COLOR = {
+  '0': { bg: 'bg-blue-100', text: 'text-blue-700' },
+  '1': { bg: 'bg-emerald-100', text: 'text-emerald-700' },
+  '2': { bg: 'bg-red-100', text: 'text-red-700' },
+  '3': { bg: 'bg-orange-100', text: 'text-orange-700' },
+  '4': { bg: 'bg-purple-100', text: 'text-purple-700' },
+};
+
 function ScheduleCard({ item, onPress }) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  const handlePressIn = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 0.97,
-      useNativeDriver: true,
-    }).start();
-  };
+  const handlePressIn = () =>
+    Animated.spring(scaleAnim, { toValue: 0.97, useNativeDriver: true }).start();
+  const handlePressOut = () =>
+    Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }).start();
 
-  const handlePressOut = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      useNativeDriver: true,
-    }).start();
+  const typeLabel = EVENT_TYPE_LABEL[item.eventtype] ?? 'Other';
+  const typeColor = EVENT_TYPE_COLOR[item.eventtype] ?? {
+    bg: 'bg-gray-100',
+    text: 'text-gray-600',
   };
 
   return (
-    <Animated.View
-      style={{ transform: [{ scale: scaleAnim }] }}
-      className="mb-3"
-    >
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }} className="mb-3">
       <TouchableOpacity
-        activeOpacity={0.8}
+        activeOpacity={0.9}
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
-        className="bg-white shadow-md rounded-2xl p-4 border border-gray-100"
+        className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+        style={{
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 8,
+          elevation: 2,
+        }}
       >
-        <View className="flex-row justify-between items-start mb-3">
-          <View className="flex-row items-center flex-1">
-            <View className="bg-gray-100 rounded-xl px-2 h-10 items-center justify-center mr-3">
-              <Text className="text-gray-600 font-bold text-xs" numberOfLines={1}>
-                {item.eventtype === '0'
-                  ? 'Setup'
-                  : item.eventtype === '2'
-                  ? 'Bongkar'
-                  : item.eventtype === '1'
-                  ? 'Event'
-                  : 'Other'}
+        {/* Top color strip based on event type */}
+        <View
+          className={`w-full h-1 ${
+            item.eventtype === '0'
+              ? 'bg-blue-400'
+              : item.eventtype === '1'
+              ? 'bg-emerald-400'
+              : item.eventtype === '2'
+              ? 'bg-red-400'
+              : item.eventtype === '3'
+              ? 'bg-orange-400'
+              : item.eventtype === '4'
+              ? 'bg-purple-400'
+              : 'bg-gray-300'
+          }`}
+        />
+
+        <View className="px-4 pt-4 pb-3">
+          {/* Event name + type badge */}
+          <View className="flex-row items-start mb-3">
+            <View
+              className={`px-2.5 py-1 rounded-lg mr-2.5 mt-0.5 ${typeColor.bg}`}
+            >
+              <Text
+                className={`text-[10px] font-extrabold uppercase ${typeColor.text}`}
+                style={{ letterSpacing: 0.8 }}
+              >
+                {typeLabel}
               </Text>
             </View>
             <Text
               numberOfLines={2}
-              ellipsizeMode="tail"
-              className="text-gray-900 font-bold text-base flex-1"
+              className="text-gray-900 font-bold text-[15px] flex-1 leading-snug"
             >
               {item.eventname}
             </Text>
           </View>
-        </View>
 
-        <View className="flex-row items-center mb-1 bg-gray-50 px-3 py-2 rounded-lg">
-          <User size={14} color="#6b7280" strokeWidth={2} />
-          <Text
-            numberOfLines={1}
-            ellipsizeMode="tail"
-            className="text-gray-600 text-sm flex-1 ml-2"
-          >
-            {item.customer}
-          </Text>
-        </View>
+          {/* Info rows */}
+          <View className="space-y-1.5">
+            <View className="flex-row items-center">
+              <View className="w-6 h-6 rounded-lg bg-gray-100 items-center justify-center mr-2.5">
+                <User size={12} color="#6b7280" strokeWidth={2} />
+              </View>
+              <Text
+                numberOfLines={1}
+                className="text-gray-600 text-[13px] flex-1 font-medium"
+              >
+                {item.customer}
+              </Text>
+            </View>
 
-        <View className="flex-row items-center mb-1 bg-gray-50 px-3 py-2 rounded-lg">
-          <MapPin size={14} color="#6b7280" strokeWidth={2} />
-          <Text
-            numberOfLines={1}
-            ellipsizeMode="tail"
-            className="text-gray-600 text-sm flex-1 ml-2"
-          >
-            {item.locations}
-          </Text>
-        </View>
-
-        <View className="border-b border-gray-200 my-2" />
-
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center bg-blue-50 px-3 py-1.5 rounded-lg flex-1 mr-2">
-            <Calendar size={13} color="#3b82f6" strokeWidth={2} />
-            <Text className="text-blue-700 text-xs ml-1.5 font-medium">
-              {formatDate(item.startdate)}
-            </Text>
+            <View className="flex-row items-center">
+              <View className="w-6 h-6 rounded-lg bg-gray-100 items-center justify-center mr-2.5">
+                <MapPin size={12} color="#6b7280" strokeWidth={2} />
+              </View>
+              <Text
+                numberOfLines={1}
+                className="text-gray-600 text-[13px] flex-1 font-medium"
+              >
+                {item.locations}
+              </Text>
+            </View>
           </View>
-          <View className="flex-row items-center bg-purple-50 px-3 py-1.5 rounded-lg flex-1">
-            <Clock size={13} color="#7c3aed" strokeWidth={2} />
-            <Text className="text-purple-700 text-xs ml-1.5 font-medium">
-              {formatDate(item.enddate)}
-            </Text>
+
+          {/* Divider */}
+          <View className="h-px bg-gray-100 my-3" />
+
+          {/* Date chips */}
+          <View className="flex-row gap-2">
+            <View className="flex-1 flex-row items-center bg-blue-50 rounded-xl px-3 py-2">
+              <Calendar size={12} color="#3b82f6" strokeWidth={2} />
+              <Text
+                className="text-blue-700 text-[11px] ml-1.5 font-semibold flex-1"
+                numberOfLines={1}
+              >
+                {formatDate(item.startdate)}
+              </Text>
+            </View>
+            <View className="w-2" />
+            <View className="flex-1 flex-row items-center bg-gray-100 rounded-xl px-3 py-2">
+              <Clock size={12} color="#6b7280" strokeWidth={2} />
+              <Text
+                className="text-gray-600 text-[11px] ml-1.5 font-semibold flex-1"
+                numberOfLines={1}
+              >
+                {formatDate(item.enddate)}
+              </Text>
+            </View>
           </View>
         </View>
       </TouchableOpacity>
@@ -195,35 +249,95 @@ export default function WorkOrderScreen({ navigation }) {
 
   return (
     <View className="flex-1 bg-gray-50">
-      <View className="bg-gray-800 pt-12 pb-8 px-5 rounded-b-[32px] shadow-xl">
-        <Text className="text-white text-2xl font-bold tracking-wide">
-          Daftar Jadwal
-        </Text>
-        <Text className="text-gray-200 mt-1 text-sm">
-          {totalCount} total jadwal
-        </Text>
+      <View
+        className="bg-gray-800 pt-14 pb-8 px-5"
+        style={{
+          shadowColor: '#111827',
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.25,
+          shadowRadius: 12,
+          elevation: 8,
+          borderBottomLeftRadius: 28,
+          borderBottomRightRadius: 28,
+        }}
+      >
+        <View className="flex-row items-center mb-1">
+          <View className="flex-1">
+            <Text
+              className="text-white/50 text-[10px] font-bold uppercase"
+              style={{ letterSpacing: 1.5 }}
+            >
+              Work Order
+            </Text>
+            <Text className="text-white text-2xl font-black mt-0.5">
+              Daftar Jadwal
+            </Text>
+          </View>
+          {/* Total count badge */}
+          <View className="bg-white/10 border border-white/10 rounded-2xl px-3 py-2 items-center">
+            <Text className="text-white text-[18px] font-black leading-none">
+              {totalCount}
+            </Text>
+            <Text
+              className="text-white/50 text-[9px] font-bold uppercase mt-0.5"
+              style={{ letterSpacing: 0.8 }}
+            >
+              Jadwal
+            </Text>
+          </View>
+        </View>
       </View>
 
-      <View className="px-5 -mt-4 mb-4">
-        <View className="flex-row items-center bg-white rounded-2xl shadow-lg px-4 py-3">
-          <Search size={20} color="#6b7280" strokeWidth={2.5} />
+      {/* ── Search Bar ── */}
+      <View className="px-5 -mt-5 mb-3">
+        <View
+          className="flex-row items-center bg-white rounded-2xl px-4 py-3 border border-gray-100"
+          style={{
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.08,
+            shadowRadius: 12,
+            elevation: 4,
+          }}
+        >
+          <Search size={18} color="#9ca3af" strokeWidth={2.5} />
           <TextInput
-            placeholder="Cari berdasarkan event, customer, location..."
+            placeholder="Cari event, customer, lokasi..."
             placeholderTextColor="#9ca3af"
             value={searchQuery}
             onChangeText={setSearchQuery}
-            className="flex-1 ml-3 text-[15px] text-gray-800"
+            className="flex-1 ml-3 text-[14px] text-gray-800 font-medium"
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <X size={20} color="#9ca3af" strokeWidth={2.5} />
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              className="w-6 h-6 bg-gray-100 rounded-full items-center justify-center"
+            >
+              <X size={13} color="#6b7280" strokeWidth={2.5} />
             </TouchableOpacity>
           )}
         </View>
       </View>
 
+      {/* ── Content ── */}
       {loading ? (
-        <ActivityIndicator size="large" color="#4f46e5" className="mt-10" />
+        <View className="flex-1 items-center justify-center">
+          <View
+            className="w-16 h-16 bg-white rounded-2xl items-center justify-center border border-gray-100"
+            style={{
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.1,
+              shadowRadius: 12,
+              elevation: 4,
+            }}
+          >
+            <ActivityIndicator size="large" color="#1f2937" />
+          </View>
+          <Text className="text-gray-400 mt-4 text-[13px] font-semibold">
+            Memuat jadwal…
+          </Text>
+        </View>
       ) : (
         <FlatList
           data={filteredData}
@@ -233,21 +347,45 @@ export default function WorkOrderScreen({ navigation }) {
           onRefresh={onRefresh}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
-            <ScheduleCard
-              item={item}
-              onPress={() => handlePressCard(item)}
-            />
+            <ScheduleCard item={item} onPress={() => handlePressCard(item)} />
           )}
-          ListEmptyComponent={
-            <View className="items-center mt-20">
-              <View className="w-20 h-20 bg-gray-100 rounded-full items-center justify-center mb-4">
-                <Calendar size={32} color="#9ca3af" strokeWidth={2} />
+          ListHeaderComponent={
+            filteredData.length > 0 ? (
+              <View className="flex-row items-center mb-3 mt-1">
+                <View className="w-5 h-5 rounded-md bg-gray-800 items-center justify-center mr-2">
+                  <View className="w-1.5 h-1.5 bg-white rounded-full" />
+                </View>
+                <Text
+                  className="text-[11px] font-extrabold text-gray-500 uppercase"
+                  style={{ letterSpacing: 1.5 }}
+                >
+                  {searchQuery ? `${filteredData.length} hasil pencarian` : 'Semua Jadwal'}
+                </Text>
+                <View className="flex-1 h-px bg-gray-100 ml-3" />
               </View>
-              <Text className="text-gray-400 text-base font-semibold">
+            ) : null
+          }
+          ListEmptyComponent={
+            <View className="items-center mt-20 px-8">
+              <View
+                className="w-16 h-16 bg-white rounded-2xl items-center justify-center mb-4 border border-gray-100"
+                style={{
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.06,
+                  shadowRadius: 8,
+                  elevation: 2,
+                }}
+              >
+                <CalendarDays size={26} color="#d1d5db" strokeWidth={2} />
+              </View>
+              <Text className="text-gray-800 text-[15px] font-black text-center mb-1">
                 Jadwal tidak ditemukan
               </Text>
-              <Text className="text-gray-400 text-sm mt-1">
-                Tarik ke bawah untuk memperbarui
+              <Text className="text-gray-400 text-[13px] text-center leading-relaxed">
+                {searchQuery
+                  ? 'Coba kata kunci yang berbeda'
+                  : 'Tarik ke bawah untuk memperbarui'}
               </Text>
             </View>
           }

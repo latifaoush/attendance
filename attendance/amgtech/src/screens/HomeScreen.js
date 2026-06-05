@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
@@ -14,8 +14,12 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
-  TrendingUp,
-  ArrowRightToLine,
+  MapPin,
+  CalendarDays,
+  LogIn,
+  LogOut,
+  Layers,
+  ScanFace,
 } from 'lucide-react-native';
 import Geolocation from '@react-native-community/geolocation';
 import { useCameraPermission } from 'react-native-vision-camera';
@@ -23,24 +27,132 @@ import Storage from '../utils/Storage';
 import Api from '../utils/Api';
 import { useNavigation } from '@react-navigation/native';
 
-function StatCard({ title, value, icon: Icon, gradient, trend, trendValue }) {
+const formatPresensi = dateTimeStr => {
+  if (!dateTimeStr || dateTimeStr === '') return null;
+  const date = new Date(dateTimeStr.replace(' ', 'T'));
+  if (isNaN(date.getTime())) return dateTimeStr;
+  const jam = date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  const tanggal = date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  return `${tanggal}  ${jam}`;
+};
+
+function SectionTitle({ title }) {
   return (
-    <View className="bg-white rounded-2xl shadow-lg p-5 mb-4">
-      <View className="flex-row justify-between items-start mb-3">
-        <View className={`p-3 rounded-2xl ${gradient}`}>
-          <Icon size={24} color="white" strokeWidth={1.5} />
-        </View>
-        {trend && (
-          <View className="flex-row items-center bg-green-50 px-2 py-1 rounded-full">
-            <TrendingUp size={12} color="#10b981" strokeWidth={3} />
-            <Text className="text-green-600 text-xs font-bold ml-1">
-              {trendValue}
-            </Text>
-          </View>
-        )}
+    <View className="flex-row items-center mb-3">
+      <View className="w-5 h-5 rounded-md bg-gray-800 items-center justify-center mr-2">
+        <View className="w-1.5 h-1.5 bg-white rounded-full" />
       </View>
-      <Text className="text-gray-500 text-sm font-medium mb-1">{title}</Text>
-      <Text className="text-gray-900 text-3xl font-bold">{value}</Text>
+      <Text
+        className="text-[11px] font-extrabold text-gray-500 uppercase"
+        style={{ letterSpacing: 1.5 }}
+      >
+        {title}
+      </Text>
+      <View className="flex-1 h-px bg-gray-100 ml-3" />
+    </View>
+  );
+}
+
+function StatCard({ title, value, icon: Icon, accentClass, iconColor }) {
+  return (
+    <View
+      className="bg-white rounded-2xl border border-gray-100 overflow-hidden flex-1"
+      style={{
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+      }}
+    >
+      <View className={`w-full h-1 ${accentClass}`} />
+      <View className="px-4 py-4">
+        <View className={`w-9 h-9 rounded-xl items-center justify-center mb-3 ${accentClass.replace('bg-', 'bg-opacity-10 bg-')}`}
+          style={{ backgroundColor: `${iconColor}18` }}
+        >
+          <Icon size={18} color={iconColor} strokeWidth={2} />
+        </View>
+        <Text
+          className="text-[10px] font-extrabold text-gray-400 uppercase mb-1"
+          style={{ letterSpacing: 0.8 }}
+        >
+          {title}
+        </Text>
+        <Text className="text-gray-800 text-[26px] font-black leading-tight">
+          {value}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function PresensiBlock({ label, value, icon: Icon, isEmpty }) {
+  return (
+    <View className="flex-1 items-center px-2">
+      <View
+        className={`w-9 h-9 rounded-xl items-center justify-center mb-2 ${
+          isEmpty ? 'bg-gray-100' : 'bg-emerald-50'
+        }`}
+      >
+        <Icon size={16} color={isEmpty ? '#d1d5db' : '#10b981'} strokeWidth={2} />
+      </View>
+      <Text
+        className="text-[10px] font-extrabold text-white/50 uppercase mb-1"
+        style={{ letterSpacing: 0.8 }}
+      >
+        {label}
+      </Text>
+      <Text
+        className={`text-[13px] font-black text-center leading-snug ${
+          isEmpty ? 'text-white/30' : 'text-white'
+        }`}
+      >
+        {value ?? '—'}
+      </Text>
+    </View>
+  );
+}
+
+function WorkOrderRow({ item, isLast }) {
+  const STATUS_CONFIG = {
+    Closed:   { bg: 'bg-emerald-50', text: 'text-emerald-700', icon: CheckCircle2, color: '#10b981' },
+    Progress: { bg: 'bg-amber-50',   text: 'text-amber-700',   icon: Clock,        color: '#f59e0b' },
+    Open:     { bg: 'bg-red-50',     text: 'text-red-700',     icon: AlertCircle,  color: '#ef4444' },
+  };
+  const cfg = STATUS_CONFIG[item.statuswovw] ?? STATUS_CONFIG.Open;
+  const StatusIcon = cfg.icon;
+
+  const timeStr = item.workerordertime;
+  let daysAgoText = '-';
+  if (timeStr) {
+    const d = new Date(timeStr);
+    if (!isNaN(d.getTime())) {
+      const diffDays = Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24));
+      daysAgoText = diffDays === 0 ? 'Hari ini' : `${diffDays} hari lalu`;
+    }
+  }
+
+  return (
+    <View className={`flex-row items-center px-4 py-3.5 ${!isLast ? 'border-b border-gray-100' : ''}`}>
+      <View
+        className="w-9 h-9 rounded-xl items-center justify-center mr-3"
+        style={{ backgroundColor: `${cfg.color}18` }}
+      >
+        <StatusIcon size={16} color={cfg.color} strokeWidth={2} />
+      </View>
+      <View className="flex-1 mr-2">
+        <Text className="text-gray-800 font-bold text-[13px]" numberOfLines={1}>
+          {item.customername || 'Unknown Customer'}
+        </Text>
+        <Text className="text-gray-400 text-[11px] mt-0.5" numberOfLines={1}>
+          {item.complain || '-'} · {daysAgoText}
+        </Text>
+      </View>
+      <View className={`px-2.5 py-1 rounded-full ${cfg.bg}`}>
+        <Text className={`text-[10px] font-black uppercase ${cfg.text}`} style={{ letterSpacing: 0.5 }}>
+          {item.statuswovw}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -53,21 +165,19 @@ export default function HomeScreen({ setToken }) {
   const [refreshing, setRefreshing] = useState(false);
 
   const [stat, setStats] = useState({
-    total: 'Counting...',
-    open: 'Counting...',
-    inProgress: 'Counting...',
-    completed: 'Counting...',
+    total: '—',
+    open: '—',
+    inProgress: '—',
+    completed: '—',
   });
 
-  const {
-    hasPermission: hasCameraPermission,
-    requestPermission: requestCameraPermission,
-  } = useCameraPermission();
+  const { hasPermission: hasCameraPermission, requestPermission: requestCameraPermission } =
+    useCameraPermission();
 
   const refreshProfile = async () => {
     try {
       const savedCredentials = await Storage.getCredentials();
-      if (!savedCredentials || !savedCredentials.username) return null;
+      if (!savedCredentials?.username) return null;
 
       const formData = new FormData();
       formData.append('username', savedCredentials.username);
@@ -77,15 +187,11 @@ export default function HomeScreen({ setToken }) {
 
       if (response?.success && response?.data?.length > 0) {
         await Storage.setProfile(response.data);
-
         setAllUserEvents(response.data);
 
         const activeJob =
           response.data.find(
-            job =>
-              job.check_in &&
-              job.check_in !== '' &&
-              (!job.check_out || job.check_out === ''),
+            job => job.check_in && job.check_in !== '' && (!job.check_out || job.check_out === ''),
           ) ||
           response.data.find(job => !job.check_in || job.check_in === '') ||
           response.data[0];
@@ -110,29 +216,19 @@ export default function HomeScreen({ setToken }) {
   const requestAllPermissions = useCallback(async () => {
     if (Platform.OS === 'android') {
       try {
-        const locationGranted = await PermissionsAndroid.request(
+        const granted = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
           {
             title: 'Izin Akses Lokasi',
-            message:
-              'Aplikasi membutuhkan akses lokasi untuk mencatat posisi event',
+            message: 'Aplikasi membutuhkan akses lokasi untuk mencatat posisi event',
             buttonPositive: 'Izinkan',
             buttonNegative: 'Nanti',
           },
         );
-
-        if (locationGranted === PermissionsAndroid.RESULTS.GRANTED) {
+        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
           Geolocation.getCurrentPosition(
-            position => {
-              console.log(
-                '✓ Initial location:',
-                position.coords.latitude,
-                position.coords.longitude,
-              );
-            },
-            error => {
-              console.log('Initial location error (normal):', error.message);
-            },
+            () => {},
+            () => {},
             { enableHighAccuracy: false, timeout: 10000, maximumAge: 10000 },
           );
         }
@@ -142,70 +238,36 @@ export default function HomeScreen({ setToken }) {
     } else {
       Geolocation.requestAuthorization();
     }
-
     if (!hasCameraPermission) {
-      try {
-        await requestCameraPermission();
-      } catch (err) {
-        console.warn('Camera permission error:', err);
-      }
+      try { await requestCameraPermission(); } catch (err) { console.warn(err); }
     }
   }, [hasCameraPermission, requestCameraPermission]);
 
   const getAllWorkOrders = async (currentUser = null) => {
     try {
       const data = currentUser || (await Storage.getProfile());
+      if (!data?.[0]?.userid) return;
 
-      if (!data || !data[0] || !data[0]['userid']) {
-        console.log('User ID tidak ditemukan untuk mengambil Work Order');
-        return;
-      }
-
-      let page = 1;
-      let allData = [];
-      let hasMore = true;
-
+      let page = 1, allData = [], hasMore = true;
       while (hasMore) {
-        const params = {
-          loginID: data[0]['userid'],
-          page: page,
-          limit: 1000,
-        };
-
-        const response = await Api.post('getworkorder', params);
-        const allWorkOrders = response?.data || [];
-
-        if (allWorkOrders.length > 0) {
-          allData = [...allData, ...allWorkOrders];
-          page++;
-        } else {
-          hasMore = false;
-        }
+        const response = await Api.post('getworkorder', { loginID: data[0].userid, page, limit: 1000 });
+        const chunk = response?.data || [];
+        if (chunk.length > 0) { allData = [...allData, ...chunk]; page++; }
+        else hasMore = false;
       }
-
-      const total = allData.length;
-      const totalInProgress = allData.filter(
-        w => w.statuswovw === 'Progress',
-      ).length;
-      const totalCompleted = allData.filter(
-        w => w.statuswovw === 'Closed',
-      ).length;
-      const totalOpen = allData.filter(w => w.statuswovw === 'Open').length;
 
       setStats({
-        total,
-        open: totalOpen,
-        inProgress: totalInProgress,
-        completed: totalCompleted,
+        total: allData.length,
+        open: allData.filter(w => w.statuswovw === 'Open').length,
+        inProgress: allData.filter(w => w.statuswovw === 'Progress').length,
+        completed: allData.filter(w => w.statuswovw === 'Closed').length,
       });
 
-      const recentActivity = allData
-        .sort(
-          (a, b) => new Date(b.workerordertime) - new Date(a.workerordertime),
-        )
-        .slice(0, 3);
-
-      setWorkOrders(recentActivity);
+      setWorkOrders(
+        [...allData]
+          .sort((a, b) => new Date(b.workerordertime) - new Date(a.workerordertime))
+          .slice(0, 3),
+      );
     } catch (error) {
       console.log('Error ambil semua data WorkOrder:', error);
     }
@@ -215,377 +277,283 @@ export default function HomeScreen({ setToken }) {
     useCallback(() => {
       const loadProfile = async () => {
         await requestAllPermissions();
-
         const profile = await Storage.getProfile();
         if (Array.isArray(profile) && profile.length > 0) {
           setAllUserEvents(profile);
           const activeJob =
-            profile.find(job => !job.check_out || job.check_out === '') ||
-            profile[0];
+            profile.find(job => !job.check_out || job.check_out === '') || profile[0];
           setUser({ ...activeJob });
         } else if (profile) {
           setAllUserEvents([profile]);
           setUser({ ...profile });
         }
-
         const latestProfile = await refreshProfile();
         await getAllWorkOrders(latestProfile);
       };
-
       loadProfile();
     }, [requestAllPermissions]),
   );
 
   const canCheckIn = event => {
     if (!event?.startdate) return false;
-
-    const dateStr = event.startdate.replace(' ', 'T');
-    const startDate = new Date(dateStr);
-
+    const startDate = new Date(event.startdate.replace(' ', 'T'));
     if (isNaN(startDate.getTime())) return false;
-
-    const allowedTime = new Date(startDate.getTime() - 15 * 60 * 1000);
-    return new Date() >= allowedTime;
+    return new Date() >= new Date(startDate.getTime() - 15 * 60 * 1000);
   };
 
   const canCheckOut = event => {
     if (!event?.enddate) return false;
-
-    const dateStr = event.enddate.replace(' ', 'T');
-    const endDate = new Date(dateStr);
-
+    const endDate = new Date(event.enddate.replace(' ', 'T'));
     if (isNaN(endDate.getTime())) return false;
-
-    return new Date().getTime() >= endDate.getTime();
+    return Date.now() >= endDate.getTime();
   };
 
   const getPendingEvent = () => {
-    if (!allUserEvents || allUserEvents.length === 0) return null;
-
+    if (!allUserEvents?.length) return null;
     const eligible = allUserEvents.filter(
-      job =>
-        job.faceid &&
-        job.faceid !== '' &&
-        job.statusregister === '0' &&
-        job.traneventid &&
-        job.traneventid !== '',
+      job => job.faceid && job.faceid !== '' && job.statusregister === '0' && job.traneventid && job.traneventid !== '',
     );
-
-    if (eligible.length === 0) return null;
-
-    const activeClockIn = eligible.find(
-      job =>
-        job.check_in &&
-        job.check_in !== '' &&
-        (!job.check_out || job.check_out === ''),
+    if (!eligible.length) return null;
+    return (
+      eligible.find(job => job.check_in && job.check_in !== '' && (!job.check_out || job.check_out === '')) ||
+      eligible.find(job => !job.check_in || job.check_in === '') ||
+      null
     );
-
-    if (activeClockIn) {
-      return activeClockIn;
-    }
-
-    const notCheckedIn = eligible.find(
-      job => !job.check_in || job.check_in === '',
-    );
-
-    return notCheckedIn || null;
   };
-
-  const formatPresensi = dateTimeStr => {
-    if (!dateTimeStr || dateTimeStr === '') return '-';
-    const date = new Date(dateTimeStr.replace(' ', 'T'));
-    if (isNaN(date.getTime())) return dateTimeStr;
-
-    const jam = date.toLocaleTimeString('id-ID', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-    const tanggal = date.toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'short',
-    });
-
-    return `${tanggal} (${jam})`;
-  };
-
-  const stats = [
-    {
-      title: 'Total Jadwal',
-      value: stat.total,
-      icon: Briefcase,
-      gradient: 'bg-gradient-to-br from-indigo-500 to-indigo-600',
-    },
-    {
-      title: 'In Progress',
-      value: stat.inProgress,
-      icon: Clock,
-      gradient: 'bg-gradient-to-br from-amber-500 to-orange-500',
-    },
-    {
-      title: 'Completed',
-      value: stat.completed,
-      icon: CheckCircle2,
-      gradient: 'bg-gradient-to-br from-emerald-500 to-green-600',
-    },
-  ];
 
   const pendingEvent = getPendingEvent();
-  const needsClockIn =
-    pendingEvent && (!pendingEvent.check_in || pendingEvent.check_in === '');
+  const needsClockIn = pendingEvent && (!pendingEvent.check_in || pendingEvent.check_in === '');
+  const checkInDisabled = needsClockIn && !canCheckIn(pendingEvent);
+  const checkOutDisabled = !needsClockIn && !canCheckOut(pendingEvent);
+  const buttonDisabled = checkInDisabled || checkOutDisabled;
+
+  const checkInVal = formatPresensi(user?.check_in);
+  const checkOutVal = formatPresensi(user?.check_out);
 
   return (
     <View className="flex-1 bg-gray-50">
-      {/* Header */}
-      <View className="bg-gray-600 pt-10 pb-8 px-5 rounded-b-[32px] shadow-xl">
-        <View className="flex-row justify-between items-center mb-6">
-          <View>
-            <Text className="text-gray-200 text-sm font-medium">
-              Selamat Datang Kembali,
-            </Text>
-            <Text className="text-white text-1xl font-bold mt-1">
-              {user?.employeenama || 'User'}
-            </Text>
-          </View>
+      {/* ── Dark Header ── */}
+      <View
+        className="bg-gray-800 pt-14 px-5 pb-6"
+        style={{
+          shadowColor: '#111827',
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.25,
+          shadowRadius: 12,
+          elevation: 8,
+          borderBottomLeftRadius: 28,
+          borderBottomRightRadius: 28,
+        }}
+      >
+        {/* Greeting */}
+        <View className="mb-5">
+          <Text
+            className="text-white/50 text-[10px] font-bold uppercase"
+            style={{ letterSpacing: 1.5 }}
+          >
+            Selamat Datang
+          </Text>
+          <Text className="text-white text-2xl font-black mt-0.5">
+            {user?.employeenama || 'User'}
+          </Text>
         </View>
-      </View>
 
-      {/* Event aktif & presensi card */}
-      <View className="px-3 -mt-8">
+        {/* Event card floating above presensi */}
         <View
-          style={{ zIndex: 10 }}
-          className="bg-white rounded-3xl shadow-xl p-4 flex-row justify-center items-center"
+          className="bg-white rounded-2xl px-4 py-3.5 mb-3"
+          style={{
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.08,
+            shadowRadius: 8,
+            elevation: 3,
+          }}
         >
-          <View className="flex-column items-center">
-            {user?.current_event_name ? (
-              <Text className="text-gray-900 text-md text-center font-bold">
-                Jadwal Acara: {user.current_event_name}
-              </Text>
-            ) : (
-              <Text className="text-gray-500 text-md text-center font-bold">
-                Tidak ada jadwal
-              </Text>
-            )}
-            <View className="flex-row items-center mt-2">
-              {user?.event_locations && (
-                <Text className="text-gray-500 text-xs mt-2 font-bold">
-                  Lokasi : {user?.event_locations}
-                </Text>
-              )}
+          <View className="flex-row items-start">
+            <View className="w-9 h-9 rounded-xl bg-gray-100 items-center justify-center mr-3 mt-0.5">
+              <CalendarDays size={16} color="#374151" strokeWidth={2} />
             </View>
-
-            {/* Tampilkan jumlah event jika lebih dari 1
-            {allUserEvents.length > 1 && (
-              <View className="mt-2 bg-indigo-50 px-3 py-1 rounded-full">
-                <Text className="text-indigo-600 text-xs font-bold">
-                  {allUserEvents.length} jadwal aktif hari ini
-                </Text>
-              </View>
-            )} */}
+            <View className="flex-1">
+              <Text
+                className="text-[10px] font-extrabold text-gray-400 uppercase mb-0.5"
+                style={{ letterSpacing: 0.8 }}
+              >
+                Jadwal Aktif
+              </Text>
+              <Text className="text-gray-800 text-[14px] font-black" numberOfLines={1}>
+                {user?.current_event_name || 'Tidak ada jadwal'}
+              </Text>
+              {user?.event_locations ? (
+                <View className="flex-row items-center mt-1">
+                  <MapPin size={11} color="#9ca3af" strokeWidth={2} />
+                  <Text className="text-gray-400 text-[11px] ml-1 font-medium" numberOfLines={1}>
+                    {user.event_locations}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
           </View>
         </View>
 
-        <View className="bg-gray-700 rounded-b-3xl shadow-lg p-4 pt-8 -mt-6 flex-row justify-around items-center">
-          {/* Kolom Masuk */}
-          <View className="items-center flex-1 border-r border-gray-600">
-            <Text className="text-white text-xs font-medium uppercase">
-              Presensi Masuk
-            </Text>
-            <Text className="text-white text-sm font-bold mt-0.5">
-              {user?.check_in && user?.check_in !== ''
-                ? formatPresensi(user.check_in)
-                : '-'}
-            </Text>
-          </View>
-
-          {/* Kolom Keluar */}
-          <View className="items-center flex-1">
-            <Text className="text-white text-xs font-medium uppercase">
-              Presensi Keluar
-            </Text>
-            <Text className="text-white text-sm font-bold mt-0.5">
-              {user?.check_out && user?.check_out !== ''
-                ? formatPresensi(user.check_out)
-                : '-'}
-            </Text>
-          </View>
+        {/* Presensi row */}
+        <View className="bg-white/10 border border-white/10 rounded-2xl px-4 py-3 flex-row">
+          <PresensiBlock
+            label="Presensi Masuk"
+            value={checkInVal}
+            icon={LogIn}
+            isEmpty={!checkInVal}
+          />
+          <View className="w-px bg-white/15 mx-2" />
+          <PresensiBlock
+            label="Presensi Keluar"
+            value={checkOutVal}
+            icon={LogOut}
+            isEmpty={!checkOutVal}
+          />
         </View>
       </View>
 
-      {/* Scrollable content */}
       <ScrollView
         className="flex-1 px-5"
-        contentContainerStyle={{ paddingTop: 2, paddingBottom: 20 }}
+        contentContainerStyle={{ paddingTop: 16, paddingBottom: 24 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={['#4f46e5']}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#1f2937']} />
         }
       >
-        {/* Stats Grid */}
-        <View className="mb-6 mt-6">
-          <Text className="text-gray-900 text-lg font-bold mb-4">Overview</Text>
-          <View className="flex-row flex-wrap -mx-2">
-            {stats.map(stat => (
-              <View key={stat.title} className="w-1/2 px-2">
-                <StatCard {...stat} />
-              </View>
-            ))}
-          </View>
+        {/* Stats */}
+        <SectionTitle title="Overview" />
+        <View className="flex-row gap-3 mb-6">
+          <StatCard
+            title="Total"
+            value={stat.total}
+            icon={Briefcase}
+            accentClass="bg-indigo-400"
+            iconColor="#6366f1"
+          />
+          <View className="w-3" />
+          <StatCard
+            title="Progress"
+            value={stat.inProgress}
+            icon={Clock}
+            accentClass="bg-amber-400"
+            iconColor="#f59e0b"
+          />
+          <View className="w-3" />
+          <StatCard
+            title="Selesai"
+            value={stat.completed}
+            icon={CheckCircle2}
+            accentClass="bg-emerald-400"
+            iconColor="#10b981"
+          />
         </View>
 
-        {/* Recent Activity */}
-        <View className="mb-8">
-          <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-gray-900 text-lg font-bold">
-              Jadwal Terbaru
-            </Text>
-          </View>
-
-          <View className="bg-white rounded-2xl shadow-sm p-4">
-            {workOrders.length > 0 ? (
-              workOrders.map((item, index) => {
-                let statusColor =
-                  item.statuswovw === 'Closed'
-                    ? 'bg-green-100 text-green-700'
-                    : item.statuswovw === 'Progress'
-                    ? 'bg-amber-100 text-amber-700'
-                    : 'bg-red-100 text-red-700';
-
-                let StatusIcon =
-                  item.statuswovw === 'Closed'
-                    ? CheckCircle2
-                    : item.statuswovw === 'Progress'
-                    ? Clock
-                    : AlertCircle;
-
-                const timeStr = item.workerordertime;
-                let daysAgoText = '-';
-                if (timeStr) {
-                  const d = new Date(timeStr);
-                  if (!isNaN(d.getTime())) {
-                    const diffDays = Math.floor(
-                      (Date.now() - d.getTime()) / (1000 * 60 * 60 * 24),
-                    );
-                    daysAgoText =
-                      diffDays === 0 ? 'Today' : `${diffDays} days ago`;
-                  } else {
-                    daysAgoText = timeStr;
-                  }
-                }
-
-                return (
-                  <View
-                    key={index}
-                    className="flex-row items-center py-3 border-b border-gray-100"
-                  >
-                    <View className="w-10 h-10 bg-indigo-100 rounded-full items-center justify-center mr-3">
-                      <StatusIcon size={18} color="#4f46e5" strokeWidth={2.5} />
-                    </View>
-
-                    <View
-                      numberOfLines={1}
-                      ellipsizeMode="tail"
-                      className="flex-1"
-                    >
-                      <Text className="text-gray-900 font-semibold text-sm">
-                        {item.customername || 'Unknown Customer'}
-                      </Text>
-                      <Text
-                        numberOfLines={1}
-                        ellipsizeMode="tail"
-                        className="text-gray-500 text-xs mt-0.5"
-                      >
-                        {item.complain || '-'} - {daysAgoText}
-                      </Text>
-                    </View>
-
-                    <View className={`px-3 py-1 rounded-full ${statusColor}`}>
-                      <Text
-                        className={`text-xs font-semibold ${
-                          statusColor.includes('text')
-                            ? statusColor.split(' ')[1]
-                            : 'text-gray-700'
-                        }`}
-                      >
-                        {item.statuswovw}
-                      </Text>
-                    </View>
-                  </View>
-                );
-              })
-            ) : (
-              <Text className="text-gray-500 text-center py-4">
+        {/* Recent Work Orders */}
+        <SectionTitle title="Jadwal Terbaru" />
+        <View
+          className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-4"
+          style={{
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.05,
+            shadowRadius: 8,
+            elevation: 2,
+          }}
+        >
+          {workOrders.length > 0 ? (
+            workOrders.map((item, index) => (
+              <WorkOrderRow key={index} item={item} isLast={index === workOrders.length - 1} />
+            ))
+          ) : (
+            <View className="items-center py-10">
+              <View className="w-12 h-12 bg-gray-100 rounded-2xl items-center justify-center mb-3">
+                <Layers size={20} color="#d1d5db" strokeWidth={2} />
+              </View>
+              <Text className="text-gray-400 text-[13px] font-semibold">
                 Belum ada aktivitas terbaru
               </Text>
-            )}
-          </View>
+            </View>
+          )}
         </View>
       </ScrollView>
 
+      {/* ── Bottom CTA Buttons ── */}
       {user?.statusregister == '1' && user?.faceid === '' && (
         <TouchableOpacity
-          className="px-3 py-4 bg-black border-t border-gray-200 mb-4 rounded-full mx-5 flex-row justify-center items-center"
+          className="mx-5 mb-4 bg-gray-800 rounded-2xl px-5 py-4 flex-row items-center justify-center border border-gray-700"
           onPress={() => navigation.navigate('RegisterFace')}
+          activeOpacity={0.85}
+          style={{
+            shadowColor: '#111827',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 10,
+            elevation: 4,
+          }}
         >
-          <ArrowRightToLine
-            size={20}
-            color="white"
-            strokeWidth={2}
-            style={{ marginRight: 2 }}
-          />
-          <Text className="text-white text-lg font-bold ml-2">
+          <View className="w-7 h-7 bg-white/15 rounded-xl items-center justify-center mr-2.5">
+            <ScanFace size={15} color="white" strokeWidth={2} />
+          </View>
+          <Text
+            className="text-white font-black text-[13px] uppercase"
+            style={{ letterSpacing: 1 }}
+          >
             Registrasi Wajah
           </Text>
         </TouchableOpacity>
       )}
 
-      {pendingEvent &&
-        (() => {
-          const isCheckInDisabled = needsClockIn && !canCheckIn(pendingEvent);
-          const isCheckoutDisabled =
-            !needsClockIn && !canCheckOut(pendingEvent);
-
-          const isButtonDisabled = isCheckInDisabled || isCheckoutDisabled;
-
-          return (
-            <TouchableOpacity
-              className={`px-3 py-4 border-t border-gray-200 mb-4 rounded-full mx-5 flex-row justify-center items-center ${
-                isButtonDisabled ? 'bg-gray-400' : 'bg-black'
-              }`}
-              disabled={isButtonDisabled}
-              onPress={() => {
-                if (needsClockIn) {
-                  navigation.navigate('FaceDetection', {
-                    currentEventId: pendingEvent.traneventid,
-                  });
-                } else {
-                  navigation.navigate('ClockOut', {
-                    currentEventId: pendingEvent.traneventid,
-                  });
+      {pendingEvent && (
+        <TouchableOpacity
+          className={`mx-5 mb-4 rounded-2xl px-3 py-3 flex-row items-center justify-center border ${
+            buttonDisabled
+              ? 'bg-gray-300 border-gray-200'
+              : 'bg-gray-800 border-gray-700'
+          }`}
+          disabled={buttonDisabled}
+          onPress={() => {
+            if (needsClockIn) {
+              navigation.navigate('FaceDetection', { currentEventId: pendingEvent.traneventid });
+            } else {
+              navigation.navigate('ClockOut', { currentEventId: pendingEvent.traneventid });
+            }
+          }}
+          activeOpacity={0.85}
+          style={
+            !buttonDisabled
+              ? {
+                  shadowColor: '#111827',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 10,
+                  elevation: 4,
                 }
-              }}
-            >
-              <ArrowRightToLine
-                size={20}
-                color="white"
-                strokeWidth={2}
-                style={{ marginRight: 2 }}
-              />
-              <Text className="text-white text-lg font-bold ml-2">
-                {needsClockIn
-                  ? isCheckInDisabled
-                    ? 'Belum Waktu Masuk'
-                    : 'Presensi Masuk'
-                  : isCheckoutDisabled
-                  ? 'Belum Waktu Keluar'
-                  : 'Presensi Keluar'}
-              </Text>
-            </TouchableOpacity>
-          );
-        })()}
+              : {}
+          }
+        >
+          <View
+            className={`w-7 h-7 rounded-xl items-center justify-center mr-2.5 ${
+              buttonDisabled ? 'bg-gray-400/30' : 'bg-white/15'
+            }`}
+          >
+            {needsClockIn
+              ? <LogIn size={15} color={buttonDisabled ? '#9ca3af' : 'white'} strokeWidth={2} />
+              : <LogOut size={15} color={buttonDisabled ? '#9ca3af' : 'white'} strokeWidth={2} />
+            }
+          </View>
+          <Text
+            className={`font-black text-[13px] uppercase ${
+              buttonDisabled ? 'text-gray-400' : 'text-white'
+            }`}
+            style={{ letterSpacing: 1 }}
+          >
+            {needsClockIn
+              ? checkInDisabled ? 'Belum Waktu Masuk' : 'Presensi Masuk'
+              : checkOutDisabled ? 'Belum Waktu Keluar' : 'Presensi Keluar'}
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
