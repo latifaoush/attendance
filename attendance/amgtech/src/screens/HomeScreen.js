@@ -239,24 +239,24 @@ export default function HomeScreen({ setToken }) {
   const canCheckIn = event => {
     if (!event?.startdate) return false;
 
-    const startDate = new Date(event.startdate.replace(' ', 'T'));
+    const dateStr = event.startdate.replace(' ', 'T');
+    const startDate = new Date(dateStr);
 
     if (isNaN(startDate.getTime())) return false;
 
     const allowedTime = new Date(startDate.getTime() - 15 * 60 * 1000);
-
     return new Date() >= allowedTime;
   };
 
   const canCheckOut = event => {
     if (!event?.enddate) return false;
 
-    const endDate = new Date(event.enddate.replace(' ', 'T'));
+    const dateStr = event.enddate.replace(' ', 'T');
+    const endDate = new Date(dateStr);
+
     if (isNaN(endDate.getTime())) return false;
 
-    const allowedTime = endDate; // Bisa check-out mulai dari waktu enddate
-
-    return new Date() >= allowedTime;
+    return new Date().getTime() >= endDate.getTime();
   };
 
   const getPendingEvent = () => {
@@ -285,7 +285,7 @@ export default function HomeScreen({ setToken }) {
     }
 
     const notCheckedIn = eligible.find(
-      job => (!job.check_in || job.check_in === '') && canCheckIn(job),
+      job => !job.check_in || job.check_in === '',
     );
 
     return notCheckedIn || null;
@@ -340,9 +340,9 @@ export default function HomeScreen({ setToken }) {
         <View className="flex-row justify-between items-center mb-6">
           <View>
             <Text className="text-gray-200 text-sm font-medium">
-              Selamat datang kembali,
+              Selamat Datang Kembali,
             </Text>
-            <Text className="text-white text-2xl font-bold mt-1">
+            <Text className="text-white text-1xl font-bold mt-1">
               {user?.employeenama || 'User'}
             </Text>
           </View>
@@ -537,22 +537,25 @@ export default function HomeScreen({ setToken }) {
             style={{ marginRight: 2 }}
           />
           <Text className="text-white text-lg font-bold ml-2">
-            Register Face
+            Registrasi Wajah
           </Text>
         </TouchableOpacity>
       )}
 
       {pendingEvent &&
         (() => {
+          const isCheckInDisabled = needsClockIn && !canCheckIn(pendingEvent);
           const isCheckoutDisabled =
             !needsClockIn && !canCheckOut(pendingEvent);
+
+          const isButtonDisabled = isCheckInDisabled || isCheckoutDisabled;
 
           return (
             <TouchableOpacity
               className={`px-3 py-4 border-t border-gray-200 mb-4 rounded-full mx-5 flex-row justify-center items-center ${
-                isCheckoutDisabled ? 'bg-gray-400' : 'bg-black'
+                isButtonDisabled ? 'bg-gray-400' : 'bg-black'
               }`}
-              disabled={isCheckoutDisabled} 
+              disabled={isButtonDisabled}
               onPress={() => {
                 if (needsClockIn) {
                   navigation.navigate('FaceDetection', {
@@ -573,7 +576,9 @@ export default function HomeScreen({ setToken }) {
               />
               <Text className="text-white text-lg font-bold ml-2">
                 {needsClockIn
-                  ? 'Presensi Masuk'
+                  ? isCheckInDisabled
+                    ? 'Belum Waktu Masuk'
+                    : 'Presensi Masuk'
                   : isCheckoutDisabled
                   ? 'Belum Waktu Keluar'
                   : 'Presensi Keluar'}

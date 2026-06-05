@@ -154,11 +154,11 @@ export default function ProfileScreen({ setToken }) {
 
   return (
     <View className="flex-1 bg-gray-50">
-      <View className="bg-gray-600 pt-12 pb-8 px-5 rounded-b-[32px] shadow-xl">
+      <View className="bg-gray-800 pt-12 pb-8 px-5 rounded-b-[32px] shadow-xl">
         <View className="flex-row justify-between items-center">
           <View>
             <Text className="text-white text-2xl font-bold tracking-wide">
-              Profile
+              Profil
             </Text>
             <Text className="text-indigo-200 mt-1 text-sm">
               Informasi akun dan pengaturan

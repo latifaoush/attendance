@@ -598,9 +598,11 @@ export default function FaceDetectionScreen() {
     }
 
     try {
+
       if (latitude === 0 && longitude === 0) {
         await requestLocationPermission();
       }
+
       setLoading(true);
 
       const formData = new FormData();
@@ -625,11 +627,11 @@ export default function FaceDetectionScreen() {
         const profile = Array.isArray(currentProfile)
           ? currentProfile
           : [currentProfile];
-        profile[0].checkin_userid = String(profile[0].userid); // tandai sudah clock in
+        profile[0].checkin_userid = String(profile[0].userid); 
         await Storage.setProfile(profile);
 
         try {
-          await setBrightnessLevel(0.5); // 0.5 adalah 50% kecerahan, sesuaikan dengan kebutuhan
+          await setBrightnessLevel(0.5); 
         } catch (e) {
           console.warn('Gagal mengembalikan kecerahan setelah clockin:', e);
         }

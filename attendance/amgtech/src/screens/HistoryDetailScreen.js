@@ -193,6 +193,7 @@ export default function HistoryDetailScreen() {
     try {
       setLoading(true);
       setError(null);
+      
       const response = await Api.getLeaveDetail(leaveid);
       if (response?.success && response?.data?.length > 0) {
         setItem(response.data[0]);
@@ -299,7 +300,6 @@ export default function HistoryDetailScreen() {
                 {fullDate}
               </Text>
             </View>
-            {/* <StatusBadge isEmpty={!checkInTime} isLate={isLate} /> */}
           </View>
         )}
       </View>
@@ -327,7 +327,7 @@ export default function HistoryDetailScreen() {
       {!loading && error && (
         <View className="flex-1 items-center justify-center px-8">
           <View className="w-16 h-16 bg-red-50 rounded-2xl items-center justify-center mb-4 border border-red-100">
-            <Text className="text-3xl">⚠️</Text>
+            <Text className="text-3xl"></Text>
           </View>
           <Text className="text-gray-800 text-base font-black text-center mb-1.5">
             Oops, terjadi masalah

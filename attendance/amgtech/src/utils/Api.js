@@ -335,7 +335,7 @@ class Api {
       });
 
       const text = await resp.text();
-      console.log('[Api] getScheduleList raw response:', text);
+      // console.log('[Api] getScheduleList raw response:', text);
       if (!resp.ok) {
         throw new Error(`Server error dengan status: ${resp.status}`);
       }
@@ -370,7 +370,7 @@ class Api {
       });
 
       const text = await resp.text();
-      console.log('[Api] getScheduleDetail raw response:', text);
+      // console.log('[Api] getScheduleDetail raw response:', text);
 
       if (!resp.ok) {
         throw new Error(`Server error: ${resp.status}`);
