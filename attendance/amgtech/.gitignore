@@ -44,7 +44,11 @@ npm-debug.log
 yarn-error.log
 android/app/build/
 ios/Pods/
+hs_err_pid*
+replay_pid*
 
+
+instance/uploads/**
 # fastlane
 #
 # It is recommended to not store the screenshots in the git repo. Instead, use fastlane to re-generate the

@@ -60,23 +60,36 @@ class Api {
     options.headers = Api.headers();
     console.log(options.headers);
 
-    return fetch(url, options)
-      .then(resp => {
-        let json = resp.json();
+    try {
+      const resp = await fetch(url, options);
 
-        if (resp.ok) {
-          return json;
-        }
-        return json.then(err => {
-          throw err;
-        });
-      })
-      .then(json => {
-        return json;
-      })
-      .catch(erorr => {
-        console.log('error===> ' + erorr.name);
-      });
+      // Ambil response dalam bentuk text terlebih dahulu untuk menghindari SyntaxError
+      const text = await resp.text();
+
+      if (!resp.ok) {
+        // Jika server response code selain 2xx (misal 404, 500)
+        console.warn(
+          `[Api.func] Server error ${resp.status}:`,
+          text.slice(0, 200),
+        );
+        throw new Error(`Server returned status ${resp.status}`);
+      }
+
+      try {
+        // Coba parsing ke JSON jika status response OK
+        return JSON.parse(text);
+      } catch (jsonError) {
+        console.error(
+          `[Api.func] Gagal parsing JSON. Response mentah dari server:`,
+          text,
+        );
+        throw new SyntaxError('Response backend bukan format JSON yang valid.');
+      }
+    } catch (error) {
+      // Log ini akan mencetak nama error yang lebih spesifik ke console log kamu
+      console.log('error===> ' + error.name + ' : ' + error.message);
+      throw error; // Di-throw kembali agar bisa ditangkap oleh blok catch di Screen/Komponen
+    }
   };
 
   static formDataPost = async (route, formData, verb) => {
