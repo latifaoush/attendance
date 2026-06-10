@@ -267,7 +267,7 @@ export default function WorkOrderScreen({ navigation }) {
               className="text-white/50 text-[10px] font-bold uppercase"
               style={{ letterSpacing: 1.5 }}
             >
-              Work Order
+              Jadwal Kerja
             </Text>
             <Text className="text-white text-2xl font-black mt-0.5">
               Daftar Jadwal

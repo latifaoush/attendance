@@ -52,43 +52,41 @@ class Api {
     const host = base_url;
     const url = `${host}/${route}`;
 
-    let options = Object.assign(
-      { method: verb },
-      params ? { body: JSON.stringify(params) } : null,
-    );
+    console.log('[API REQUEST]', verb, url);
+    console.log('[API BODY]', params);
 
-    options.headers = Api.headers();
-    console.log(options.headers);
+    let options = {
+      method: verb,
+      headers: Api.headers(),
+    };
+
+    if (params) {
+      options.body = JSON.stringify(params);
+    }
 
     try {
       const resp = await fetch(url, options);
 
-      // Ambil response dalam bentuk text terlebih dahulu untuk menghindari SyntaxError
       const text = await resp.text();
 
+      console.log('[API RESPONSE STATUS]', resp.status);
+      console.log('[API RESPONSE TEXT]', text.slice(0, 300));
+
       if (!resp.ok) {
-        // Jika server response code selain 2xx (misal 404, 500)
-        console.warn(
-          `[Api.func] Server error ${resp.status}:`,
-          text.slice(0, 200),
-        );
         throw new Error(`Server returned status ${resp.status}`);
       }
 
       try {
-        // Coba parsing ke JSON jika status response OK
         return JSON.parse(text);
       } catch (jsonError) {
-        console.error(
-          `[Api.func] Gagal parsing JSON. Response mentah dari server:`,
-          text,
-        );
-        throw new SyntaxError('Response backend bukan format JSON yang valid.');
+        console.log('[API JSON ERROR]', jsonError);
+
+        throw new Error(`Response bukan JSON valid: ${text.slice(0, 100)}`);
       }
     } catch (error) {
-      // Log ini akan mencetak nama error yang lebih spesifik ke console log kamu
-      console.log('error===> ' + error.name + ' : ' + error.message);
-      throw error; // Di-throw kembali agar bisa ditangkap oleh blok catch di Screen/Komponen
+      console.log('[API ERROR]', error);
+
+      throw error;
     }
   };
 
@@ -365,6 +363,70 @@ class Api {
       }
     } catch (error) {
       console.warn('[Api] getScheduleList error:', error?.message ?? error);
+      throw error;
+    }
+  };
+
+  static getWorkOrderLast = async formData => {
+    const url = `${base_url}/schedulelast`;
+    try {
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Custom-Security': CUSTOM_SECURITY,
+        },
+        body: formData,
+      });
+
+      const text = await resp.text();
+      // console.log('[Api] getWorkOrderLast raw response:', text);
+      if (!resp.ok) {
+        throw new Error(`Server error dengan status: ${resp.status}`);
+      }
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        throw new Error(
+          `Server tidak mengembalikan JSON valid. Response: ${text.slice(
+            0,
+            100,
+          )}`,
+        );
+      }
+    } catch (error) {
+      console.warn('[Api] getWorkOrderLast error:', error?.message ?? error);
+      throw error;
+    }
+  };
+  
+  static getWorkOrder = async formData => {
+    const url = `${base_url}/schedulecount`;
+    try {
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Custom-Security': CUSTOM_SECURITY,
+        },
+        body: formData,
+      });
+
+      const text = await resp.text();
+      // console.log('[Api] getWorkOrder raw response:', text);
+      if (!resp.ok) {
+        throw new Error(`Server error dengan status: ${resp.status}`);
+      }
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        throw new Error(
+          `Server tidak mengembalikan JSON valid. Response: ${text.slice(
+            0,
+            100,
+          )}`,
+        );
+      }
+    } catch (error) {
+      console.warn('[Api] getWorkOrder error:', error?.message ?? error);
       throw error;
     }
   };

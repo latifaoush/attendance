@@ -13,15 +13,13 @@ import {
   Briefcase,
   Clock,
   CheckCircle2,
-  AlertCircle,
   MapPin,
   CalendarDays,
   LogIn,
   LogOut,
-  Layers,
   ScanFace,
 } from 'lucide-react-native';
-import Geolocation from '@react-native-community/geolocation';
+import Geolocation from 'react-native-geolocation-service';
 import { useCameraPermission } from 'react-native-vision-camera';
 import Storage from '../utils/Storage';
 import Api from '../utils/Api';
@@ -31,8 +29,14 @@ const formatPresensi = dateTimeStr => {
   if (!dateTimeStr || dateTimeStr === '') return null;
   const date = new Date(dateTimeStr.replace(' ', 'T'));
   if (isNaN(date.getTime())) return dateTimeStr;
-  const jam = date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-  const tanggal = date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  const jam = date.toLocaleTimeString('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  const tanggal = date.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+  });
   return `${tanggal}  ${jam}`;
 };
 
@@ -67,7 +71,11 @@ function StatCard({ title, value, icon: Icon, accentClass, iconColor }) {
     >
       <View className={`w-full h-1 ${accentClass}`} />
       <View className="px-4 py-4">
-        <View className={`w-9 h-9 rounded-xl items-center justify-center mb-3 ${accentClass.replace('bg-', 'bg-opacity-10 bg-')}`}
+        <View
+          className={`w-9 h-9 rounded-xl items-center justify-center mb-3 ${accentClass.replace(
+            'bg-',
+            'bg-opacity-10 bg-',
+          )}`}
           style={{ backgroundColor: `${iconColor}18` }}
         >
           <Icon size={18} color={iconColor} strokeWidth={2} />
@@ -94,7 +102,11 @@ function PresensiBlock({ label, value, icon: Icon, isEmpty }) {
           isEmpty ? 'bg-gray-100' : 'bg-emerald-50'
         }`}
       >
-        <Icon size={16} color={isEmpty ? '#d1d5db' : '#10b981'} strokeWidth={2} />
+        <Icon
+          size={16}
+          color={isEmpty ? '#d1d5db' : '#10b981'}
+          strokeWidth={2}
+        />
       </View>
       <Text
         className="text-[10px] font-extrabold text-white/50 uppercase mb-1"
@@ -113,54 +125,10 @@ function PresensiBlock({ label, value, icon: Icon, isEmpty }) {
   );
 }
 
-function WorkOrderRow({ item, isLast }) {
-  const STATUS_CONFIG = {
-    Closed:   { bg: 'bg-emerald-50', text: 'text-emerald-700', icon: CheckCircle2, color: '#10b981' },
-    Progress: { bg: 'bg-amber-50',   text: 'text-amber-700',   icon: Clock,        color: '#f59e0b' },
-    Open:     { bg: 'bg-red-50',     text: 'text-red-700',     icon: AlertCircle,  color: '#ef4444' },
-  };
-  const cfg = STATUS_CONFIG[item.statuswovw] ?? STATUS_CONFIG.Open;
-  const StatusIcon = cfg.icon;
-
-  const timeStr = item.workerordertime;
-  let daysAgoText = '-';
-  if (timeStr) {
-    const d = new Date(timeStr);
-    if (!isNaN(d.getTime())) {
-      const diffDays = Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24));
-      daysAgoText = diffDays === 0 ? 'Hari ini' : `${diffDays} hari lalu`;
-    }
-  }
-
-  return (
-    <View className={`flex-row items-center px-4 py-3.5 ${!isLast ? 'border-b border-gray-100' : ''}`}>
-      <View
-        className="w-9 h-9 rounded-xl items-center justify-center mr-3"
-        style={{ backgroundColor: `${cfg.color}18` }}
-      >
-        <StatusIcon size={16} color={cfg.color} strokeWidth={2} />
-      </View>
-      <View className="flex-1 mr-2">
-        <Text className="text-gray-800 font-bold text-[13px]" numberOfLines={1}>
-          {item.customername || 'Unknown Customer'}
-        </Text>
-        <Text className="text-gray-400 text-[11px] mt-0.5" numberOfLines={1}>
-          {item.complain || '-'} · {daysAgoText}
-        </Text>
-      </View>
-      <View className={`px-2.5 py-1 rounded-full ${cfg.bg}`}>
-        <Text className={`text-[10px] font-black uppercase ${cfg.text}`} style={{ letterSpacing: 0.5 }}>
-          {item.statuswovw}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
 export default function HomeScreen({ setToken }) {
   const [user, setUser] = useState(null);
   const [allUserEvents, setAllUserEvents] = useState([]);
-  const [workOrders, setWorkOrders] = useState([]);
+  const [lastWorkOrders, setLastWorkOrders] = useState(null);
   const navigation = useNavigation();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -171,8 +139,10 @@ export default function HomeScreen({ setToken }) {
     completed: '—',
   });
 
-  const { hasPermission: hasCameraPermission, requestPermission: requestCameraPermission } =
-    useCameraPermission();
+  const {
+    hasPermission: hasCameraPermission,
+    requestPermission: requestCameraPermission,
+  } = useCameraPermission();
 
   const refreshProfile = async () => {
     try {
@@ -191,7 +161,10 @@ export default function HomeScreen({ setToken }) {
 
         const activeJob =
           response.data.find(
-            job => job.check_in && job.check_in !== '' && (!job.check_out || job.check_out === ''),
+            job =>
+              job.check_in &&
+              job.check_in !== '' &&
+              (!job.check_out || job.check_out === ''),
           ) ||
           response.data.find(job => !job.check_in || job.check_in === '') ||
           response.data[0];
@@ -210,6 +183,7 @@ export default function HomeScreen({ setToken }) {
     setRefreshing(true);
     const latestProfile = await refreshProfile();
     await getAllWorkOrders(latestProfile);
+    await getLastWorkOrder(latestProfile);
     setRefreshing(false);
   }, []);
 
@@ -220,7 +194,8 @@ export default function HomeScreen({ setToken }) {
           PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
           {
             title: 'Izin Akses Lokasi',
-            message: 'Aplikasi membutuhkan akses lokasi untuk mencatat posisi event',
+            message:
+              'Aplikasi membutuhkan akses lokasi untuk mencatat posisi event',
             buttonPositive: 'Izinkan',
             buttonNegative: 'Nanti',
           },
@@ -239,37 +214,59 @@ export default function HomeScreen({ setToken }) {
       Geolocation.requestAuthorization();
     }
     if (!hasCameraPermission) {
-      try { await requestCameraPermission(); } catch (err) { console.warn(err); }
+      try {
+        await requestCameraPermission();
+      } catch (err) {
+        console.warn(err);
+      }
     }
   }, [hasCameraPermission, requestCameraPermission]);
 
   const getAllWorkOrders = async (currentUser = null) => {
     try {
       const data = currentUser || (await Storage.getProfile());
+      const userId = data?.[0]?.userid;
+      if (!userId) return;
+
+      const formData = new FormData();
+      formData.append('userid', userId);
+
+      const countResponse = await Api.getWorkOrder(formData);
+
+      if (countResponse?.success && countResponse?.data?.length > 0) {
+        const statsData = countResponse.data[0];
+
+        setStats({
+          total: statsData.total?.toString() || '0',
+          inProgress: statsData.total_onprogress?.toString() || '0',
+          completed: statsData.total_completed?.toString() || '0',
+        });
+      } else {
+        setStats({ total: '0', inProgress: '0', completed: '0' });
+      }
+    } catch (error) {
+      console.log('Error ambil data akumulasi:', error);
+      setStats({ total: '0', inProgress: '0', completed: '0' });
+    }
+  };
+
+  const getLastWorkOrder = async (currentUser = null) => {
+    try {
+      const data = currentUser || (await Storage.getProfile());
       if (!data?.[0]?.userid) return;
 
-      let page = 1, allData = [], hasMore = true;
-      while (hasMore) {
-        const response = await Api.post('getworkorder', { loginID: data[0].userid, page, limit: 1000 });
-        const chunk = response?.data || [];
-        if (chunk.length > 0) { allData = [...allData, ...chunk]; page++; }
-        else hasMore = false;
+      const formData = new FormData();
+      formData.append('userid', data[0].userid);
+
+      const response = await Api.getWorkOrderLast(formData);
+
+      if (response?.success && response?.data?.length > 0) {
+        setLastWorkOrders(response.data[0]);
+      } else {
+        setLastWorkOrders(null);
       }
-
-      setStats({
-        total: allData.length,
-        open: allData.filter(w => w.statuswovw === 'Open').length,
-        inProgress: allData.filter(w => w.statuswovw === 'Progress').length,
-        completed: allData.filter(w => w.statuswovw === 'Closed').length,
-      });
-
-      setWorkOrders(
-        [...allData]
-          .sort((a, b) => new Date(b.workerordertime) - new Date(a.workerordertime))
-          .slice(0, 3),
-      );
     } catch (error) {
-      console.log('Error ambil semua data WorkOrder:', error);
+      console.log('Error ambil data WorkOrderLast:', error);
     }
   };
 
@@ -281,7 +278,8 @@ export default function HomeScreen({ setToken }) {
         if (Array.isArray(profile) && profile.length > 0) {
           setAllUserEvents(profile);
           const activeJob =
-            profile.find(job => !job.check_out || job.check_out === '') || profile[0];
+            profile.find(job => !job.check_out || job.check_out === '') ||
+            profile[0];
           setUser({ ...activeJob });
         } else if (profile) {
           setAllUserEvents([profile]);
@@ -289,6 +287,7 @@ export default function HomeScreen({ setToken }) {
         }
         const latestProfile = await refreshProfile();
         await getAllWorkOrders(latestProfile);
+        await getLastWorkOrder(latestProfile);
       };
       loadProfile();
     }, [requestAllPermissions]),
@@ -311,18 +310,29 @@ export default function HomeScreen({ setToken }) {
   const getPendingEvent = () => {
     if (!allUserEvents?.length) return null;
     const eligible = allUserEvents.filter(
-      job => job.faceid && job.faceid !== '' && job.statusregister === '0' && job.traneventid && job.traneventid !== '',
+      job =>
+        job.faceid &&
+        job.faceid !== '' &&
+        job.statusregister === '0' &&
+        job.traneventid &&
+        job.traneventid !== '',
     );
     if (!eligible.length) return null;
     return (
-      eligible.find(job => job.check_in && job.check_in !== '' && (!job.check_out || job.check_out === '')) ||
+      eligible.find(
+        job =>
+          job.check_in &&
+          job.check_in !== '' &&
+          (!job.check_out || job.check_out === ''),
+      ) ||
       eligible.find(job => !job.check_in || job.check_in === '') ||
       null
     );
   };
 
   const pendingEvent = getPendingEvent();
-  const needsClockIn = pendingEvent && (!pendingEvent.check_in || pendingEvent.check_in === '');
+  const needsClockIn =
+    pendingEvent && (!pendingEvent.check_in || pendingEvent.check_in === '');
   const checkInDisabled = needsClockIn && !canCheckIn(pendingEvent);
   const checkOutDisabled = !needsClockIn && !canCheckOut(pendingEvent);
   const buttonDisabled = checkInDisabled || checkOutDisabled;
@@ -380,13 +390,19 @@ export default function HomeScreen({ setToken }) {
               >
                 Jadwal Aktif
               </Text>
-              <Text className="text-gray-800 text-[14px] font-black" numberOfLines={1}>
+              <Text
+                className="text-gray-800 text-[14px] font-black"
+                numberOfLines={1}
+              >
                 {user?.current_event_name || 'Tidak ada jadwal'}
               </Text>
               {user?.event_locations ? (
                 <View className="flex-row items-center mt-1">
                   <MapPin size={11} color="#9ca3af" strokeWidth={2} />
-                  <Text className="text-gray-400 text-[11px] ml-1 font-medium" numberOfLines={1}>
+                  <Text
+                    className="text-gray-400 text-[11px] ml-1 font-medium"
+                    numberOfLines={1}
+                  >
                     {user.event_locations}
                   </Text>
                 </View>
@@ -418,7 +434,11 @@ export default function HomeScreen({ setToken }) {
         contentContainerStyle={{ paddingTop: 16, paddingBottom: 24 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#1f2937']} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#1f2937']}
+          />
         }
       >
         {/* Stats */}
@@ -433,7 +453,7 @@ export default function HomeScreen({ setToken }) {
           />
           <View className="w-3" />
           <StatCard
-            title="Progress"
+            title="On Progress"
             value={stat.inProgress}
             icon={Clock}
             accentClass="bg-amber-400"
@@ -450,32 +470,68 @@ export default function HomeScreen({ setToken }) {
         </View>
 
         {/* Recent Work Orders */}
-        <SectionTitle title="Jadwal Terbaru" />
-        <View
-          className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-4"
-          style={{
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.05,
-            shadowRadius: 8,
-            elevation: 2,
-          }}
-        >
-          {workOrders.length > 0 ? (
-            workOrders.map((item, index) => (
-              <WorkOrderRow key={index} item={item} isLast={index === workOrders.length - 1} />
-            ))
-          ) : (
-            <View className="items-center py-10">
-              <View className="w-12 h-12 bg-gray-100 rounded-2xl items-center justify-center mb-3">
-                <Layers size={20} color="#d1d5db" strokeWidth={2} />
-              </View>
-              <Text className="text-gray-400 text-[13px] font-semibold">
-                Belum ada aktivitas terbaru
+        <SectionTitle title="Jadwal Baru Ditambahkan" />
+        {lastWorkOrders ? (
+          <View
+            className="bg-white rounded-2xl border border-gray-100 p-4 mb-6"
+            style={{
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.05,
+              shadowRadius: 8,
+              elevation: 2,
+            }}
+          >
+            <View className="flex-row items-center mb-2">
+              <View className="w-2 h-2 rounded-full bg-indigo-500 mr-2" />
+              <Text
+                className="text-gray-800 font-black text-[15px] flex-1"
+                numberOfLines={1}
+              >
+                {lastWorkOrders.eventname || 'Pekerjaan Tanpa Nama'}
               </Text>
             </View>
-          )}
-        </View>
+            <Text className="text-gray-500 font-bold text-[12px] mb-1">
+              Tahap:{' '}
+              <Text className="text-gray-700">
+                {lastWorkOrders.eventtype == 0
+                  ? 'Setup'
+                  : lastWorkOrders.eventtype == 1
+                  ? 'Event'
+                  : lastWorkOrders.eventtype == 2
+                  ? 'Bongkar'
+                  : lastWorkOrders.eventtype == 3
+                  ? 'Antar'
+                  : lastWorkOrders.eventtype == 4
+                  ? 'Tarik'
+                  : 'Unknown'}
+              </Text>
+            </Text>
+
+            <View className="flex-row items-center mt-2 pt-2 border-t border-gray-50">
+              <MapPin size={12} color="#9ca3af" strokeWidth={2} />
+              <Text
+                className="text-gray-400 text-[11px] ml-1 flex-1"
+                numberOfLines={1}
+              >
+                {lastWorkOrders.locations || '-'}
+              </Text>
+            </View>
+
+            <View className="flex-row items-center mt-1">
+              <Clock size={12} color="#9ca3af" strokeWidth={2} />
+              <Text className="text-gray-400 text-[11px] ml-1">
+                Mulai: {formatPresensi(lastWorkOrders.startdate) || '-'}
+              </Text>
+            </View>
+          </View>
+        ) : (
+          <View className="bg-white rounded-2xl border border-gray-100 py-6 items-center mb-6">
+            <Text className="text-gray-400 text-[12px] font-semibold">
+              Tidak ada jadwal mendatang berikutnya.
+            </Text>
+          </View>
+        )}
       </ScrollView>
 
       {/* ── Bottom CTA Buttons ── */}
@@ -514,9 +570,13 @@ export default function HomeScreen({ setToken }) {
           disabled={buttonDisabled}
           onPress={() => {
             if (needsClockIn) {
-              navigation.navigate('FaceDetection', { currentEventId: pendingEvent.traneventid });
+              navigation.navigate('FaceDetection', {
+                currentEventId: pendingEvent.traneventid,
+              });
             } else {
-              navigation.navigate('ClockOut', { currentEventId: pendingEvent.traneventid });
+              navigation.navigate('ClockOut', {
+                currentEventId: pendingEvent.traneventid,
+              });
             }
           }}
           activeOpacity={0.85}
@@ -537,10 +597,19 @@ export default function HomeScreen({ setToken }) {
               buttonDisabled ? 'bg-gray-400/30' : 'bg-white/15'
             }`}
           >
-            {needsClockIn
-              ? <LogIn size={15} color={buttonDisabled ? '#9ca3af' : 'white'} strokeWidth={2} />
-              : <LogOut size={15} color={buttonDisabled ? '#9ca3af' : 'white'} strokeWidth={2} />
-            }
+            {needsClockIn ? (
+              <LogIn
+                size={15}
+                color={buttonDisabled ? '#9ca3af' : 'white'}
+                strokeWidth={2}
+              />
+            ) : (
+              <LogOut
+                size={15}
+                color={buttonDisabled ? '#9ca3af' : 'white'}
+                strokeWidth={2}
+              />
+            )}
           </View>
           <Text
             className={`font-black text-[13px] uppercase ${
@@ -549,8 +618,12 @@ export default function HomeScreen({ setToken }) {
             style={{ letterSpacing: 1 }}
           >
             {needsClockIn
-              ? checkInDisabled ? 'Belum Waktu Masuk' : 'Presensi Masuk'
-              : checkOutDisabled ? 'Belum Waktu Keluar' : 'Presensi Keluar'}
+              ? checkInDisabled
+                ? 'Belum Waktu Masuk'
+                : 'Presensi Masuk'
+              : checkOutDisabled
+              ? 'Belum Waktu Keluar'
+              : 'Presensi Keluar'}
           </Text>
         </TouchableOpacity>
       )}

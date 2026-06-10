@@ -36,10 +36,10 @@ import {
   useIsFocused,
   useFocusEffect,
 } from '@react-navigation/native';
-import ImageResizer from '@bam.tech/react-native-image-resizer';
+import ImageResizer from 'react-native-image-resizer';
 import Api from '../utils/Api';
 import Storage from '../utils/Storage';
-import Geolocation from '@react-native-community/geolocation';
+import Geolocation from 'react-native-geolocation-service';
 import { setBrightnessLevel } from '@reeq/react-native-device-brightness';
 
 const { width } = Dimensions.get('window');

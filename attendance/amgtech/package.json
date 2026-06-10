@@ -10,10 +10,8 @@
     "test": "jest"
   },
   "dependencies": {
-    "@bam.tech/react-native-image-resizer": "^3.0.11",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-community/datetimepicker": "^8.5.0",
-    "@react-native-community/geolocation": "^3.4.0",
     "@react-native-firebase/app": "^23.7.0",
     "@react-native-firebase/messaging": "^23.7.0",
     "@react-native/new-app-screen": "0.82.0",
@@ -23,14 +21,17 @@
     "@reeq/react-native-device-brightness": "^2.0.2",
     "axios": "^1.13.2",
     "lucide-react-native": "^0.548.0",
-    "nativewind": "^2.0.11",
+    "nativewind": "^4.2.5",
     "react": "19.1.1",
     "react-native": "0.82.0",
-    "react-native-css-interop": "^0.2.1",
+    "react-native-css-interop": "^0.2.5",
     "react-native-device-info": "^15.0.2",
     "react-native-elements": "^3.4.3",
+    "react-native-geolocation-service": "^5.3.1",
+    "react-native-image-resizer": "^1.4.5",
     "react-native-modal-selector": "^2.1.2",
-    "react-native-safe-area-context": "^5.6.1",
+    "react-native-reanimated": "4.2.0",
+    "react-native-safe-area-context": "^5.8.0",
     "react-native-screens": "^4.18.0",
     "react-native-signature-canvas": "^5.0.1",
     "react-native-svg": "^15.14.0",
@@ -38,6 +39,7 @@
     "react-native-vision-camera": "^4.7.3",
     "react-native-vision-camera-face-detector": "^1.10.1",
     "react-native-webview": "^13.16.0",
+    "react-native-worklets": "0.8.3",
     "react-native-worklets-core": "^1.6.3"
   },
   "devDependencies": {
@@ -59,7 +61,7 @@
     "jest": "^29.6.3",
     "prettier": "2.8.8",
     "react-test-renderer": "19.1.1",
-    "tailwindcss": "^3.3.2",
+    "tailwindcss": "^3.4.19",
     "typescript": "^5.8.3"
   },
   "engines": {

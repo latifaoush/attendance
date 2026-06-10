@@ -36,10 +36,10 @@ import {
   useIsFocused,
   useFocusEffect,
 } from '@react-navigation/native';
-import ImageResizer from '@bam.tech/react-native-image-resizer';
+import ImageResizer from 'react-native-image-resizer';
 import Api from '../utils/Api';
 import Storage from '../utils/Storage';
-import Geolocation from '@react-native-community/geolocation';
+import Geolocation from 'react-native-geolocation-service';
 import { setBrightnessLevel } from '@reeq/react-native-device-brightness';
 
 const { width } = Dimensions.get('window');
@@ -256,9 +256,11 @@ export default function FaceDetectionScreen() {
         const currentLongitude = position.coords.longitude;
         const currentLatitude = position.coords.latitude;
 
-        console.log(
-          'Long = ' + currentLongitude + ', Lat = ' + currentLatitude,
-        );
+        console.log('LOCATION SUCCESS');
+        console.log('LATITUDE:', currentLatitude);
+        console.log('LONGITUDE:', currentLongitude);
+        console.log('ACCURACY:', position.coords.accuracy);
+
         setLatitude(currentLatitude);
         setLongitude(currentLongitude);
 
@@ -291,9 +293,8 @@ export default function FaceDetectionScreen() {
       },
       {
         enableHighAccuracy: useHighAccuracy,
-        timeout: useHighAccuracy ? 15000 : 10000,
-        maximumAge: 10000,
-        distanceFilter: 10,
+        timeout: useHighAccuracy ? 20000 : 15000,
+        maximumAge: useHighAccuracy ? 5000 : 60000,
       },
     );
   }, []);
@@ -524,54 +525,52 @@ export default function FaceDetectionScreen() {
     classificationMode: 'all',
   });
 
-  const updateFaceStatus = Worklets.createRunOnJS(
-    useCallback((faces, frameW, frameH) => {
-      if (faces.length === 0) {
-        setFacePresent(false);
-        setFaceStatus({
-          detected: false,
-          isSmiling: false,
-          isBlinking: false,
-          direction: 'center',
-        });
-        setFaceMessage('Wajah tidak terdeteksi');
-        return;
-      }
+  const updateFaceStatus = useCallback((faces, frameW, frameH) => {
+    if (faces.length === 0) {
+      setFacePresent(false);
+      setFaceStatus({
+        detected: false,
+        isSmiling: false,
+        isBlinking: false,
+        direction: 'center',
+      });
+      setFaceMessage('Wajah tidak terdeteksi');
+      return;
+    }
 
-      setFacePresent(true);
+    setFacePresent(true);
 
-      const face = faces[0];
-      const validation = getFaceValidationMessage(face.bounds, frameW, frameH);
+    const face = faces[0];
+    const validation = getFaceValidationMessage(face.bounds, frameW, frameH);
 
-      if (validation !== true) {
-        setFaceStatus({
-          detected: false,
-          isSmiling: false,
-          isBlinking: false,
-          direction: 'center',
-        });
-        setFaceMessage(validation);
-        return;
-      }
+    if (validation !== true) {
+      setFaceStatus({
+        detected: false,
+        isSmiling: false,
+        isBlinking: false,
+        direction: 'center',
+      });
+      setFaceMessage(validation);
+      return;
+    }
 
-      const isBlinking =
-        face.leftEyeOpenProbability < 0.3 && face.rightEyeOpenProbability < 0.3;
-      const isSmiling = face.smilingProbability > 0.7;
+    const isBlinking =
+      face.leftEyeOpenProbability < 0.3 && face.rightEyeOpenProbability < 0.3;
+    const isSmiling = face.smilingProbability > 0.7;
 
-      let direction = 'center';
-      if (face.yawAngle > 20) direction = 'left';
-      else if (face.yawAngle < -20) direction = 'right';
+    let direction = 'center';
+    if (face.yawAngle > 20) direction = 'left';
+    else if (face.yawAngle < -20) direction = 'right';
 
-      setFaceStatus({ detected: true, isSmiling, isBlinking, direction });
-      setFaceMessage('');
-    }, []),
-  );
+    setFaceStatus({ detected: true, isSmiling, isBlinking, direction });
+    setFaceMessage('');
+  }, []);
 
   const frameProcessor = useFrameProcessor(
     frame => {
       'worklet';
       const faces = faceDetector.detectFaces(frame);
-      updateFaceStatus(faces, frame.width, frame.height);
+     runOJS(updateFaceStatus)(faces, frame.width, frame.height);
     },
     [faceDetector, updateFaceStatus],
   );
@@ -598,7 +597,6 @@ export default function FaceDetectionScreen() {
     }
 
     try {
-
       if (latitude === 0 && longitude === 0) {
         await requestLocationPermission();
       }
@@ -627,11 +625,11 @@ export default function FaceDetectionScreen() {
         const profile = Array.isArray(currentProfile)
           ? currentProfile
           : [currentProfile];
-        profile[0].checkin_userid = String(profile[0].userid); 
+        profile[0].checkin_userid = String(profile[0].userid);
         await Storage.setProfile(profile);
 
         try {
-          await setBrightnessLevel(0.5); 
+          await setBrightnessLevel(0.5);
         } catch (e) {
           console.warn('Gagal mengembalikan kecerahan setelah clockin:', e);
         }
@@ -649,6 +647,20 @@ export default function FaceDetectionScreen() {
       Alert.alert('Error', 'Gagal menghubungi server.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const formatTimeOnly = dateTimeString => {
+    if (!dateTimeString) return '–:–';
+    try {
+      // Memotong bagian jam dan menit (HH:MM) dari format "YYYY-MM-DD HH:MM:SS"
+      const timePart = dateTimeString.split(' ')[1];
+      if (timePart) {
+        return timePart.substring(0, 5); // Mengambil "09:32" dari "09:32:00"
+      }
+      return '–:–';
+    } catch (error) {
+      return '–:–';
     }
   };
 
@@ -862,14 +874,18 @@ export default function FaceDetectionScreen() {
             <View className="flex-row items-center gap-x-1.5 mb-1">
               <Briefcase size={13} color="#64748b" />
               <Text className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">
-                Shift Kerja
+                Jam Kerja
               </Text>
             </View>
             <Text
               className="text-[12px] font-bold text-slate-800"
               numberOfLines={1}
             >
-              Pagi (08:00 – 17:00)
+              {user?.startdate && user?.enddate
+                ? `${formatTimeOnly(user.startdate)} – ${formatTimeOnly(
+                    user.enddate,
+                  )}`
+                : 'Tidak Ada Jadwal'}{' '}
             </Text>
           </View>
 

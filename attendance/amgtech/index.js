@@ -6,6 +6,7 @@ import {
   getMessaging,
   setBackgroundMessageHandler,
 } from '@react-native-firebase/messaging';
+import './global.css';
 
 const messaging = getMessaging();
 

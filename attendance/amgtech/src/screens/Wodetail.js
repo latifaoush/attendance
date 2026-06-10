@@ -107,7 +107,6 @@ export default function WorkOrderDetailScreen({ route, navigation }) {
         const d = response.data[0];
         setDetail({
           no: d.tranno ?? '-',
-          customer: d.customer ?? '-',
           address: d.locations ?? '-',
           date: d.startdate ?? '-',
           enddate: d.enddate ?? '-',
@@ -247,11 +246,6 @@ export default function WorkOrderDetailScreen({ route, navigation }) {
         {/* ── Informasi Acara ── */}
         <SectionTitle title="Informasi Acara" />
         <InfoCard>
-          <InfoRow
-            icon={<Building2 size={16} color="#4b5563" />}
-            label="Customer"
-            value={detail?.customer}
-          />
           <InfoRow
             icon={<Clock size={16} color="#4b5563" />}
             label="Tanggal Mulai"
