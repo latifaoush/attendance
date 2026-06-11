@@ -36,7 +36,14 @@ local.properties
 .kotlin/
 
 # Python backend uploads
+# Abaikan folder uploads di mana pun dia berada
+**/instance/uploads/
+**/uploads/
+instance/uploads/
 py/instance/uploads/
+
+# Abaikan juga venv
+**/.venv/
 py/.venv/
 
 # node.js
