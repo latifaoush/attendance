@@ -39,7 +39,7 @@ import {
 import ImageResizer from '@bam.tech/react-native-image-resizer';
 import Api from '../utils/Api';
 import Storage from '../utils/Storage';
-import Geolocation from '@react-native-community/geolocation';
+import Geolocation from 'react-native-geolocation-service';
 import { setBrightnessLevel } from '@reeq/react-native-device-brightness';
 
 const { width } = Dimensions.get('window');
@@ -250,74 +250,66 @@ export default function FaceDetectionScreen() {
     isFinishedRef.current = isFinished;
   }, [isFinished]);
 
-  const getOneTimeLocation = useCallback(async (useHighAccuracy = true) => {
-    
-    Geolocation.getCurrentPosition(
-      position => {
-        const currentLongitude = position.coords.longitude;
-        const currentLatitude = position.coords.latitude;
-        const mocked = position.mocked || false;
-        const accuracy = position.coords.accuracy;
+  const getOneTimeLocation = useCallback((useHighAccuracy = true) => {
+    return new Promise((resolve, reject) => {
+      console.log('Membuka Watch GPS:', { useHighAccuracy });
 
-        console.log({
-          mocked,
-          accuracy,
-        });
+      let watchId = null;
 
-        console.log(
-          'Long = ' + currentLongitude + ', Lat = ' + currentLatitude,
-        );
+      const timer = setTimeout(
+        () => {
+          if (watchId !== null) {
+            Geolocation.clearWatch(watchId);
+            console.log('Watch GPS timeout manual dipicu.');
 
-        console.log('Position:', JSON.stringify(position, null, 2));
-        console.log('Mocked:', position.mocked);
-        console.log('Accuracy:', position.coords.accuracy);
+            if (useHighAccuracy) {
+              console.log('Pindah ke Network via Watch Fallback...');
+              getOneTimeLocation(false).then(resolve).catch(reject);
+            } else {
+              reject(new Error('TIMEOUT'));
+            }
+          }
+        },
+        useHighAccuracy ? 15000 : 10000,
+      );
 
-        if (mocked) {
-          Alert.alert('Fake GPS Terdeteksi', 'Nonaktifkan aplikasi fake GPS.');
-          return;
-        }
+      watchId = Geolocation.watchPosition(
+        position => {
+          clearTimeout(timer);
+          Geolocation.clearWatch(watchId);
 
-        if (accuracy > 100) {
-          Alert.alert('GPS Tidak Akurat', 'Coba pindah ke area terbuka.');
-          return;
-        }
-        setLatitude(currentLatitude);
-        setLongitude(currentLongitude);
+          const currentLongitude = position.coords.longitude;
+          const currentLatitude = position.coords.latitude;
 
-        console.log('Lokasi berhasil didapat');
-      },
-      error => {
-        console.log('Error getting location:', error.message, error.code);
+          console.log('Watch Position Berhasil:', {
+            currentLatitude,
+            currentLongitude,
+          });
 
-        if (error.code === 3 && useHighAccuracy) {
-          console.log('GPS timeout, mencoba dengan Network Location...');
-          getOneTimeLocation(false);
-        } else if (error.code === 2) {
-          console.log('GPS tidak aktif');
-          Alert.alert(
-            'GPS Tidak Aktif',
-            'Silakan aktifkan GPS/Location di pengaturan HP Anda',
-            [
-              {
-                text: 'Coba Lagi',
-                onPress: () => getOneTimeLocation(true),
-              },
-              { text: 'Nanti', style: 'cancel' },
-            ],
-          );
-        } else {
-          console.log(
-            'Tidak dapat mendapatkan lokasi. Absensi akan disubmit tanpa koordinat GPS.',
-          );
-        }
-      },
-      {
-        enableHighAccuracy: useHighAccuracy,
-        timeout: useHighAccuracy ? 15000 : 10000,
-        maximumAge: 10000,
-        distanceFilter: 10,
-      },
-    );
+          setLatitude(currentLatitude);
+          setLongitude(currentLongitude);
+          resolve({ latitude: currentLatitude, longitude: currentLongitude });
+        },
+        error => {
+          clearTimeout(timer);
+          Geolocation.clearWatch(watchId);
+          console.log('Watch GPS Error:', error.code, error.message);
+
+          if (error.code === 3 && useHighAccuracy) {
+            getOneTimeLocation(false).then(resolve).catch(reject);
+          } else {
+            reject(error);
+          }
+        },
+        {
+          enableHighAccuracy: useHighAccuracy,
+          timeout: useHighAccuracy ? 15000 : 10000,
+          maximumAge: useHighAccuracy ? 5000 : 30000,
+          forceRequestLocation: true,
+          showLocationDialog: true,
+        },
+      );
+    });
   }, []);
 
   const requestLocationPermission = useCallback(async () => {
@@ -327,41 +319,34 @@ export default function FaceDetectionScreen() {
           PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
         );
 
-        if (checkPermission) {
-          console.log('Permission already granted');
-          getOneTimeLocation(true);
-          return;
-        }
-
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          {
-            title: 'Izin Akses Lokasi',
-            message:
-              'Aplikasi membutuhkan akses lokasi untuk mencatat posisi absensi',
-            buttonPositive: 'OK',
-            buttonNegative: 'Batal',
-          },
-        );
-
-        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-          console.log('Location permission granted');
-          getOneTimeLocation(true);
-        } else if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
-          Alert.alert(
-            'Izin Lokasi Ditolak',
-            'Silakan aktifkan izin lokasi di Settings',
-            [{ text: 'OK' }],
+        if (!checkPermission) {
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+            {
+              title: 'Izin Akses Lokasi',
+              message:
+                'Aplikasi membutuhkan akses lokasi untuk mencatat posisi absensi',
+              buttonPositive: 'OK',
+              buttonNegative: 'Batal',
+            },
           );
-        } else {
-          console.log('Location permission denied');
-          Alert.alert('Info', 'Izin lokasi diperlukan untuk mencatat posisi');
+          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+            Alert.alert('Info', 'Izin lokasi diperlukan untuk mencatat posisi');
+            return null;
+          }
         }
+
+        return await getOneTimeLocation(true);
       } catch (err) {
-        console.warn('Error requesting permission:', err);
+        console.log('[Permission] Gagal mengambil lokasi:', err.message);
+        return null;
       }
     } else {
-      getOneTimeLocation(true);
+      try {
+        return await getOneTimeLocation(true);
+      } catch (err) {
+        return null;
+      }
     }
   }, [getOneTimeLocation]);
 
@@ -411,7 +396,10 @@ export default function FaceDetectionScreen() {
     const shuffled = pickRandom(CHALLENGE_KEYS, 3);
     setChallenges(shuffled);
     openCamera();
-    requestLocationPermission();
+
+    // requestLocationPermission().catch(err =>
+    //   console.log('Init location error ignored:', err),
+    // );
   }, [openCamera, requestLocationPermission]);
 
   useEffect(() => {
@@ -619,16 +607,43 @@ export default function FaceDetectionScreen() {
       return;
     }
 
-    try {
-      if (latitude === 0 && longitude === 0) {
-        await requestLocationPermission();
+    let currentLat = latitude;
+    let currentLng = longitude;
+
+    if (currentLat === 0 && currentLng === 0) {
+      setLoading(true);
+      try {
+        console.log('MULAI AMBIL GPS SAAT SUBMIT');
+        const loc = await requestLocationPermission();
+        if (loc) {
+          console.log('GPS BERHASIL', loc);
+
+          currentLat = loc.latitude;
+          currentLng = loc.longitude;
+        }
+      } catch (e) {
+        console.log('Gagal mengambil lokasi saat submit:', e);
+      } finally {
+        setLoading(false);
       }
+
+      if (currentLat === 0 && currentLng === 0) {
+        Alert.alert(
+          'Gagal Absen',
+          'Koordinat lokasi Anda belum terbaca oleh sistem. Pastikan Anda berada di area yang tidak terhalang gedung tinggi, GPS aktif, lalu tunggu beberapa saat dan coba tekan submit kembali.',
+        );
+        return;
+      }
+    }
+
+    try {
       setLoading(true);
 
       const formData = new FormData();
       formData.append('userid', String(profile.userid));
-      formData.append('latitude', String(latitude));
-      formData.append('longitude', String(longitude));
+      formData.append('latitude', String(currentLat));
+      formData.append('longitude', String(currentLng));
+      formData.append('traneventid', String(profile.traneventid));
       formData.append('image', {
         uri: verifiedPhotoUri,
         type: 'image/jpeg',
@@ -647,7 +662,7 @@ export default function FaceDetectionScreen() {
         const profile = Array.isArray(currentProfile)
           ? currentProfile
           : [currentProfile];
-        profile[0].checkin_userid = String(profile[0].userid); // tandai sudah clock in
+        profile[0].checkin_userid = String(profile[0].userid); 
         await Storage.setProfile(profile);
 
         try {
@@ -677,7 +692,7 @@ export default function FaceDetectionScreen() {
     try {
       const timePart = dateTimeString.split(' ')[1];
       if (timePart) {
-        return timePart.substring(0, 5); // Mengambil "09:32" dari "09:32:00"
+        return timePart.substring(0, 5); 
       }
       return '–:–';
     } catch (error) {

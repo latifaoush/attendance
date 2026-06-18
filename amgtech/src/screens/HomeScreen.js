@@ -20,7 +20,7 @@ import {
   ScanFace,
   AlertTriangle,
 } from 'lucide-react-native';
-import Geolocation from '@react-native-community/geolocation';
+import Geolocation from 'react-native-geolocation-service';
 import { useCameraPermission } from 'react-native-vision-camera';
 import Storage from '../utils/Storage';
 import Api from '../utils/Api';
@@ -203,9 +203,17 @@ export default function HomeScreen({ setToken }) {
         );
         if (granted === PermissionsAndroid.RESULTS.GRANTED) {
           Geolocation.getCurrentPosition(
-            () => {},
-            () => {},
-            { enableHighAccuracy: false, timeout: 10000, maximumAge: 10000 },
+            pos => {
+              console.log('HOME GPS SUCCESS', pos.coords);
+            },
+            err => {
+              console.log('HOME GPS ERROR', err);
+            },
+            {
+              enableHighAccuracy: false,
+              timeout: 30000,
+              maximumAge: 0,
+            },
           );
         }
       } catch (err) {
@@ -311,8 +319,7 @@ export default function HomeScreen({ setToken }) {
   const getPendingEvent = () => {
     if (!allUserEvents?.length) return null;
     const eligible = allUserEvents.filter(
-      job =>
-        job.traneventid && job.traneventid !== '',
+      job => job.traneventid && job.traneventid !== '',
     );
     if (!eligible.length) return null;
     return (
@@ -561,7 +568,7 @@ export default function HomeScreen({ setToken }) {
 
       {pendingEvent && (
         <TouchableOpacity
-          className={`mx-5 mb-4 rounded-2xl px-3 py-3 flex-row items-center justify-center border ${
+          className={`mx-5 mb-4 rounded-full px-3 py-3 flex-row items-center justify-center border ${
             buttonDisabled
               ? 'bg-gray-300 border-gray-200'
               : 'bg-gray-800 border-gray-700'

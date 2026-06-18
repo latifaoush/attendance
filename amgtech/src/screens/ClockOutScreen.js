@@ -39,7 +39,7 @@ import {
 import ImageResizer from '@bam.tech/react-native-image-resizer';
 import Api from '../utils/Api';
 import Storage from '../utils/Storage';
-import Geolocation from '@react-native-community/geolocation';
+import Geolocation from 'react-native-geolocation-service';
 import { setBrightnessLevel } from '@reeq/react-native-device-brightness';
 
 const { width } = Dimensions.get('window');
@@ -250,52 +250,66 @@ export default function ClockOutScreen() {
     isFinishedRef.current = isFinished;
   }, [isFinished]);
 
-  const getOneTimeLocation = useCallback(async (useHighAccuracy = true) => {
-    Geolocation.getCurrentPosition(
-      position => {
-        const currentLongitude = position.coords.longitude;
-        const currentLatitude = position.coords.latitude;
+  const getOneTimeLocation = useCallback((useHighAccuracy = true) => {
+    return new Promise((resolve, reject) => {
+      console.log('Membuka Watch GPS:', { useHighAccuracy });
 
-        console.log(
-          'Long = ' + currentLongitude + ', Lat = ' + currentLatitude,
-        );
-        setLatitude(currentLatitude);
-        setLongitude(currentLongitude);
+      let watchId = null;
 
-        console.log('Lokasi berhasil didapat');
-      },
-      error => {
-        console.log('Error getting location:', error.message, error.code);
+      const timer = setTimeout(
+        () => {
+          if (watchId !== null) {
+            Geolocation.clearWatch(watchId);
+            console.log('Watch GPS timeout manual dipicu.');
 
-        if (error.code === 3 && useHighAccuracy) {
-          console.log('GPS timeout, mencoba dengan Network Location...');
-          getOneTimeLocation(false);
-        } else if (error.code === 2) {
-          console.log('GPS tidak aktif');
-          Alert.alert(
-            'GPS Tidak Aktif',
-            'Silakan aktifkan GPS/Location di pengaturan HP Anda',
-            [
-              {
-                text: 'Coba Lagi',
-                onPress: () => getOneTimeLocation(true),
-              },
-              { text: 'Nanti', style: 'cancel' },
-            ],
-          );
-        } else {
-          console.log(
-            'Tidak dapat mendapatkan lokasi. Work order akan disubmit tanpa koordinat GPS.',
-          );
-        }
-      },
-      {
-        enableHighAccuracy: useHighAccuracy,
-        timeout: useHighAccuracy ? 15000 : 10000,
-        maximumAge: 10000,
-        distanceFilter: 10,
-      },
-    );
+            if (useHighAccuracy) {
+              console.log('Pindah ke Network via Watch Fallback...');
+              getOneTimeLocation(false).then(resolve).catch(reject);
+            } else {
+              reject(new Error('TIMEOUT'));
+            }
+          }
+        },
+        useHighAccuracy ? 15000 : 10000,
+      );
+
+      watchId = Geolocation.watchPosition(
+        position => {
+          clearTimeout(timer);
+          Geolocation.clearWatch(watchId);
+
+          const currentLongitude = position.coords.longitude;
+          const currentLatitude = position.coords.latitude;
+
+          console.log('Watch Position Berhasil:', {
+            currentLatitude,
+            currentLongitude,
+          });
+
+          setLatitude(currentLatitude);
+          setLongitude(currentLongitude);
+          resolve({ latitude: currentLatitude, longitude: currentLongitude });
+        },
+        error => {
+          clearTimeout(timer);
+          Geolocation.clearWatch(watchId);
+          console.log('Watch GPS Error:', error.code, error.message);
+
+          if (error.code === 3 && useHighAccuracy) {
+            getOneTimeLocation(false).then(resolve).catch(reject);
+          } else {
+            reject(error);
+          }
+        },
+        {
+          enableHighAccuracy: useHighAccuracy,
+          timeout: useHighAccuracy ? 15000 : 10000,
+          maximumAge: useHighAccuracy ? 5000 : 30000,
+          forceRequestLocation: true,
+          showLocationDialog: true,
+        },
+      );
+    });
   }, []);
 
   const requestLocationPermission = useCallback(async () => {
@@ -597,6 +611,23 @@ export default function ClockOutScreen() {
       return;
     }
 
+    if (latitude === 0 && longitude === 0) {
+      setLoading(true);
+      await new Promise(resolve => {
+        requestLocationPermission();
+        setTimeout(resolve, 3000);
+      });
+      setLoading(false);
+
+      if (latitude === 0 && longitude === 0) {
+        Alert.alert(
+          'Gagal Absen',
+          'Koordinat lokasi Anda belum terbaca oleh sistem. Pastikan Anda berada di area terbuka, GPS aktif, lalu tunggu beberapa saat dan coba tekan submit kembali.',
+        );
+        return;
+      }
+    }
+
     try {
       if (latitude === 0 && longitude === 0) {
         await requestLocationPermission();
@@ -607,6 +638,7 @@ export default function ClockOutScreen() {
       formData.append('userid', String(profile.userid));
       formData.append('latitude', String(latitude));
       formData.append('longitude', String(longitude));
+      formData.append('traneventid', String(profile.traneventid));
       formData.append('image', {
         uri: verifiedPhotoUri,
         type: 'image/jpeg',
@@ -638,6 +670,19 @@ export default function ClockOutScreen() {
       Alert.alert('Error', 'Gagal menghubungi server.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const formatTimeOnly = dateTimeString => {
+    if (!dateTimeString) return '–:–';
+    try {
+      const timePart = dateTimeString.split(' ')[1];
+      if (timePart) {
+        return timePart.substring(0, 5);
+      }
+      return '–:–';
+    } catch (error) {
+      return '–:–';
     }
   };
 
@@ -851,14 +896,18 @@ export default function ClockOutScreen() {
             <View className="flex-row items-center gap-x-1.5 mb-1">
               <Briefcase size={13} color="#64748b" />
               <Text className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">
-                Shift Kerja
+                Jam Kerja
               </Text>
             </View>
             <Text
               className="text-[12px] font-bold text-slate-800"
               numberOfLines={1}
             >
-              Pagi (08:00 – 17:00)
+              {user?.startdate && user?.enddate
+                ? `${formatTimeOnly(user.startdate)} – ${formatTimeOnly(
+                    user.enddate,
+                  )}`
+                : 'Tidak Ada Jadwal'}{' '}
             </Text>
           </View>
 

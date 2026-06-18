@@ -155,7 +155,8 @@ class Api {
     });
 
     formData.append('user_id', String(userid).trim());
-
+    console.log('[Api] registerFace target URL:', url);
+    console.log('[Api] registerFace image uri:', imageUrl);
     try {
       const response = await axios.post(url, formData, {
         headers: {
@@ -166,10 +167,9 @@ class Api {
       });
       return response.data;
     } catch (error) {
-      console.warn(
-        '[Api] registerFace error:',
-        error?.response?.data ?? error.message,
-      );
+      console.warn('[Api] registerFace error code:', error.code);
+      console.warn('[Api] registerFace error message:', error.message);
+      console.warn('[Api] registerFace error config url:', error.config?.url);
       throw error;
     }
   };
@@ -398,7 +398,7 @@ class Api {
       throw error;
     }
   };
-  
+
   static getWorkOrder = async formData => {
     const url = `${base_url}/schedulecount`;
     try {
@@ -446,7 +446,7 @@ class Api {
       });
 
       const text = await resp.text();
-      // console.log('[Api] getScheduleDetail raw response:', text);
+      console.log('[Api] getScheduleDetail raw response:', text);
 
       if (!resp.ok) {
         throw new Error(`Server error: ${resp.status}`);

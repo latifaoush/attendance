@@ -13,7 +13,6 @@ import {
   MapPin,
   Calendar,
   MessageSquare,
-  Building2,
   Clock,
   CalendarCheck,
   UserCog,
