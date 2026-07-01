@@ -1,0 +1,24 @@
+                        -HC:\max\amgtech\node_modules\react-native\ReactAndroid\cmake-utils\default-app-setup
+-DCMAKE_SYSTEM_NAME=Android
+-DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+-DCMAKE_SYSTEM_VERSION=26
+-DANDROID_PLATFORM=android-26
+-DANDROID_ABI=x86
+-DCMAKE_ANDROID_ARCH_ABI=x86
+-DANDROID_NDK=C:\Users\toshiba\AppData\Local\Android\Sdk\ndk\29.0.14206865
+-DCMAKE_ANDROID_NDK=C:\Users\toshiba\AppData\Local\Android\Sdk\ndk\29.0.14206865
+-DCMAKE_TOOLCHAIN_FILE=C:\Users\toshiba\AppData\Local\Android\Sdk\ndk\29.0.14206865\build\cmake\android.toolchain.cmake
+-DCMAKE_MAKE_PROGRAM=C:\Users\toshiba\AppData\Local\Android\Sdk\cmake\3.22.1\bin\ninja.exe
+-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=C:\max\amgtech\android\app\build\intermediates\cxx\Debug\5oy63i1u\obj\x86
+-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=C:\max\amgtech\android\app\build\intermediates\cxx\Debug\5oy63i1u\obj\x86
+-DCMAKE_BUILD_TYPE=Debug
+-DCMAKE_FIND_ROOT_PATH=C:\max\amgtech\android\app\.cxx\Debug\5oy63i1u\prefab\x86\prefab
+-BC:\max\amgtech\android\app\.cxx\Debug\5oy63i1u\x86
+-GNinja
+-DPROJECT_BUILD_DIR=C:\max\amgtech\android\app\build
+-DPROJECT_ROOT_DIR=C:\max\amgtech\android
+-DREACT_ANDROID_DIR=C:\max\amgtech\node_modules\react-native\ReactAndroid
+-DANDROID_STL=c++_shared
+-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON
+                        Build command args: []
+                        Version: 2

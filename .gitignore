@@ -1,0 +1,16 @@
+# React Native
+node_modules/
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+
+# Metro
+.metro/
+
+# Logs
+*.log
+
+# Local env
+.env

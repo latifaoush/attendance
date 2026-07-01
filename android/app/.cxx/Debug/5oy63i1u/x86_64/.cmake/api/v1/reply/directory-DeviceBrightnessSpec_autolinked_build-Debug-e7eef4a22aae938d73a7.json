@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "DeviceBrightnessSpec_autolinked_build",
+		"source" : "C:/max/amgtech/node_modules/@reeq/react-native-device-brightness/android/build/generated/source/codegen/jni"
+	}
+}
