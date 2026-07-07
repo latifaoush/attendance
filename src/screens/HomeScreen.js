@@ -501,7 +501,7 @@ export default function HomeScreen({ setToken }) {
                 className="text-gray-800 font-black text-[15px] flex-1"
                 numberOfLines={1}
               >
-                {lastWorkOrders.eventname || 'Pekerjaan Tanpa Nama'}
+                {lastWorkOrders.eventname || '-'}
               </Text>
             </View>
             <Text className="text-gray-500 font-bold text-[12px] mb-1">

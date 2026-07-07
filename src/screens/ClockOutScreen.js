@@ -252,50 +252,43 @@ export default function ClockOutScreen() {
 
   const getOneTimeLocation = useCallback((useHighAccuracy = true) => {
     return new Promise((resolve, reject) => {
-      console.log('Membuka Watch GPS:', { useHighAccuracy });
+      console.log('Mengambil GPS...', { useHighAccuracy });
 
-      let watchId = null;
-
-      const timer = setTimeout(
-        () => {
-          if (watchId !== null) {
-            Geolocation.clearWatch(watchId);
-            console.log('Watch GPS timeout manual dipicu.');
-
-            if (useHighAccuracy) {
-              console.log('Pindah ke Network via Watch Fallback...');
-              getOneTimeLocation(false).then(resolve).catch(reject);
-            } else {
-              reject(new Error('TIMEOUT'));
-            }
-          }
-        },
-        useHighAccuracy ? 15000 : 10000,
-      );
-
-      watchId = Geolocation.watchPosition(
+      Geolocation.getCurrentPosition(
         position => {
-          clearTimeout(timer);
-          Geolocation.clearWatch(watchId);
+          console.log('GPS SUCCESS', position);
 
-          const currentLongitude = position.coords.longitude;
+          const isMocked = position.mocked || position.coords?.mocked;
+
+          if (isMocked) {
+            reject(new Error('FAKE_GPS_DETECTED'));
+            return;
+          }
+
+          const accuracy = position.coords.accuracy;
+
+          if (accuracy <= 0) {
+            reject(new Error('FAKE_GPS_DETECTED'));
+            return;
+          }
+
           const currentLatitude = position.coords.latitude;
-
-          console.log('Watch Position Berhasil:', {
-            currentLatitude,
-            currentLongitude,
-          });
+          const currentLongitude = position.coords.longitude;
 
           setLatitude(currentLatitude);
           setLongitude(currentLongitude);
-          resolve({ latitude: currentLatitude, longitude: currentLongitude });
+
+          resolve({
+            latitude: currentLatitude,
+            longitude: currentLongitude,
+          });
         },
         error => {
-          clearTimeout(timer);
-          Geolocation.clearWatch(watchId);
-          console.log('Watch GPS Error:', error.code, error.message);
+          console.log('GPS ERROR', error);
 
           if (error.code === 3 && useHighAccuracy) {
+            console.log('Fallback ke Network');
+
             getOneTimeLocation(false).then(resolve).catch(reject);
           } else {
             reject(error);
@@ -304,7 +297,7 @@ export default function ClockOutScreen() {
         {
           enableHighAccuracy: useHighAccuracy,
           timeout: useHighAccuracy ? 15000 : 10000,
-          maximumAge: useHighAccuracy ? 5000 : 30000,
+          maximumAge: 5000,
           forceRequestLocation: true,
           showLocationDialog: true,
         },
@@ -321,8 +314,7 @@ export default function ClockOutScreen() {
 
         if (checkPermission) {
           console.log('Permission already granted');
-          getOneTimeLocation(true);
-          return;
+          return await getOneTimeLocation(true);
         }
 
         const granted = await PermissionsAndroid.request(
@@ -338,7 +330,7 @@ export default function ClockOutScreen() {
 
         if (granted === PermissionsAndroid.RESULTS.GRANTED) {
           console.log('Location permission granted');
-          getOneTimeLocation(true);
+          return await getOneTimeLocation(true);
         } else if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
           Alert.alert(
             'Izin Lokasi Ditolak',
@@ -351,9 +343,16 @@ export default function ClockOutScreen() {
         }
       } catch (err) {
         console.warn('Error requesting permission:', err);
+        if (err.message === 'FAKE_GPS_DETECTED') throw err;
+        return null;
       }
     } else {
-      getOneTimeLocation(true);
+      try {
+        return await getOneTimeLocation(true);
+      } catch (err) {
+        if (err.message === 'FAKE_GPS_DETECTED') throw err;
+        return null;
+      }
     }
   }, [getOneTimeLocation]);
 
@@ -611,15 +610,34 @@ export default function ClockOutScreen() {
       return;
     }
 
-    if (latitude === 0 && longitude === 0) {
-      setLoading(true);
-      await new Promise(resolve => {
-        requestLocationPermission();
-        setTimeout(resolve, 3000);
-      });
-      setLoading(false);
+    let currentLat = latitude;
+    let currentLng = longitude;
 
-      if (latitude === 0 && longitude === 0) {
+    if (currentLat === 0 && currentLng === 0) {
+      setLoading(true);
+      try {
+        console.log('MULAI AMBIL GPS SAAT SUBMIT');
+        const loc = await requestLocationPermission();
+        if (loc) {
+          currentLat = loc.latitude;
+          currentLng = loc.longitude;
+        }
+      } catch (e) {
+        console.log('Gagal mengambil lokasi saat submit:', e.message);
+
+        if (e.message === 'FAKE_GPS_DETECTED') {
+          setLoading(false);
+          Alert.alert(
+            'Presensi Ditolak',
+            'Sistem mendeteksi Anda menggunakan lokasi palsu (Fake GPS). Harap matikan aplikasi tiruan lokasi Anda untuk dapat melanjutkan absensi.',
+          );
+          return;
+        }
+      } finally {
+        setLoading(false);
+      }
+
+      if (currentLat === 0 && currentLng === 0) {
         Alert.alert(
           'Gagal Absen',
           'Koordinat lokasi Anda belum terbaca oleh sistem. Pastikan Anda berada di area terbuka, GPS aktif, lalu tunggu beberapa saat dan coba tekan submit kembali.',
@@ -629,15 +647,12 @@ export default function ClockOutScreen() {
     }
 
     try {
-      if (latitude === 0 && longitude === 0) {
-        await requestLocationPermission();
-      }
       setLoading(true);
 
       const formData = new FormData();
       formData.append('userid', String(profile.userid));
-      formData.append('latitude', String(latitude));
-      formData.append('longitude', String(longitude));
+      formData.append('latitude', String(currentLat));
+      formData.append('longitude', String(currentLng));
       formData.append('traneventid', String(profile.traneventid));
       formData.append('image', {
         uri: verifiedPhotoUri,

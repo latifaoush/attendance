@@ -252,68 +252,43 @@ export default function FaceDetectionScreen() {
 
   const getOneTimeLocation = useCallback((useHighAccuracy = true) => {
     return new Promise((resolve, reject) => {
-      console.log('Membuka Watch GPS:', { useHighAccuracy });
+      console.log('Mengambil GPS...', { useHighAccuracy });
 
-      let watchId = null;
-
-      const timer = setTimeout(
-        () => {
-          if (watchId !== null) {
-            Geolocation.clearWatch(watchId);
-            console.log('Watch GPS timeout manual dipicu.');
-
-            if (useHighAccuracy) {
-              console.log('Pindah ke Network via Watch Fallback...');
-              getOneTimeLocation(false).then(resolve).catch(reject);
-            } else {
-              reject(new Error('TIMEOUT'));
-            }
-          }
-        },
-        useHighAccuracy ? 15000 : 10000,
-      );
-
-      watchId = Geolocation.watchPosition(
+      Geolocation.getCurrentPosition(
         position => {
-          clearTimeout(timer);
-          Geolocation.clearWatch(watchId);
+          console.log('GPS SUCCESS', position);
 
-          const isMocked =
-            position.mocked || (position.coords && position.coords.mocked);
-          const accuracy = position.coords.accuracy;
+          const isMocked = position.mocked || position.coords?.mocked;
 
           if (isMocked) {
-            console.log('PERINGATAN: Fake GPS Terdeteksi melalui flag mocked!');
             reject(new Error('FAKE_GPS_DETECTED'));
             return;
           }
 
-          if (accuracy === 0) {
-            console.log(
-              'PERINGATAN: Akurasi mencurigakan (0). Kemungkinan Fake GPS.',
-            );
-            reject(new Error('SUSPICIOUS_ACCURACY'));
+          const accuracy = position.coords.accuracy;
+
+          if (accuracy <= 0) {
+            reject(new Error('FAKE_GPS_DETECTED'));
             return;
           }
 
-          const currentLongitude = position.coords.longitude;
           const currentLatitude = position.coords.latitude;
-
-          console.log('Watch Position Berhasil:', {
-            currentLatitude,
-            currentLongitude,
-          });
+          const currentLongitude = position.coords.longitude;
 
           setLatitude(currentLatitude);
           setLongitude(currentLongitude);
-          resolve({ latitude: currentLatitude, longitude: currentLongitude });
+
+          resolve({
+            latitude: currentLatitude,
+            longitude: currentLongitude,
+          });
         },
         error => {
-          clearTimeout(timer);
-          Geolocation.clearWatch(watchId);
-          console.log('Watch GPS Error:', error.code, error.message);
+          console.log('GPS ERROR', error);
 
           if (error.code === 3 && useHighAccuracy) {
+            console.log('Fallback ke Network');
+
             getOneTimeLocation(false).then(resolve).catch(reject);
           } else {
             reject(error);
@@ -322,7 +297,7 @@ export default function FaceDetectionScreen() {
         {
           enableHighAccuracy: useHighAccuracy,
           timeout: useHighAccuracy ? 15000 : 10000,
-          maximumAge: useHighAccuracy ? 5000 : 30000,
+          maximumAge: 5000,
           forceRequestLocation: true,
           showLocationDialog: true,
         },
@@ -651,7 +626,7 @@ export default function FaceDetectionScreen() {
             'Presensi Ditolak',
             'Sistem mendeteksi Anda menggunakan lokasi palsu (Fake GPS). Harap matikan aplikasi tiruan lokasi Anda untuk dapat melanjutkan absensi.',
           );
-          return; // Stop proses di sini
+          return;
         }
       } finally {
         setLoading(false);
@@ -696,7 +671,7 @@ export default function FaceDetectionScreen() {
         await Storage.setProfile(profile);
 
         try {
-          await setBrightnessLevel(0.5); // 0.5 adalah 50% kecerahan, sesuaikan dengan kebutuhan
+          await setBrightnessLevel(0.5);
         } catch (e) {
           console.warn('Gagal mengembalikan kecerahan setelah clockin:', e);
         }
@@ -757,7 +732,7 @@ export default function FaceDetectionScreen() {
         </Text>
         <TouchableOpacity
           onPress={requestPermission}
-          className="bg-indigo-500 px-10 py-4 rounded-2xl"
+          className="bg-gray-800 px-10 py-4 rounded-2xl"
         >
           <Text className="text-white text-base font-bold">Izinkan Kamera</Text>
         </TouchableOpacity>
