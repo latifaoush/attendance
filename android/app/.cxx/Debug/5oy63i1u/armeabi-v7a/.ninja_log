@@ -3,7 +3,7 @@
 24270	35929	8050266111030639	RNImageResizerSpec_autolinked_build/CMakeFiles/react_codegen_RNImageResizerSpec.dir/react/renderer/components/RNImageResizerSpec/States.cpp.o	15ec5e9c3a02ca78
 94	24431	8050265996274207	RNImageResizerSpec_autolinked_build/CMakeFiles/react_codegen_RNImageResizerSpec.dir/react/renderer/components/RNImageResizerSpec/RNImageResizerSpecJSI-generated.cpp.o	47b267b3798507d6
 127861	143884	8050267191393766	safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir/b41c1bdb0ce12f14436e3de85a79e4c2/codegen/jni/react/renderer/components/safeareacontext/EventEmitters.cpp.o	b69f2f5967791553
-3	36	0	C:/max/amgtech/android/app/.cxx/Debug/5oy63i1u/armeabi-v7a/CMakeFiles/cmake.verify_globs	e41fb428fb82c779
+7	126	0	C:/max/amgtech/android/app/.cxx/Debug/5oy63i1u/armeabi-v7a/CMakeFiles/cmake.verify_globs	e41fb428fb82c779
 84	22272	8050265974645363	RNImageResizerSpec_autolinked_build/CMakeFiles/react_codegen_RNImageResizerSpec.dir/react/renderer/components/RNImageResizerSpec/EventEmitters.cpp.o	9a1a0fc1cb77f61b
 103144	121918	8050266970199167	DeviceBrightnessSpec_autolinked_build/CMakeFiles/react_codegen_DeviceBrightnessSpec.dir/react/renderer/components/DeviceBrightnessSpec/ComponentDescriptors.cpp.o	956bbf43f44fee7b
 65	24269	8050265995236924	RNImageResizerSpec_autolinked_build/CMakeFiles/react_codegen_RNImageResizerSpec.dir/RNImageResizerSpec-generated.cpp.o	a9f43ad5065b3c9e
@@ -104,4 +104,4 @@
 252408	267639	8050268429221511	RNCWebViewSpec_autolinked_build/CMakeFiles/react_codegen_RNCWebViewSpec.dir/react/renderer/components/RNCWebViewSpec/ShadowNodes.cpp.o	ad40a3134f172207
 247608	262000	8050268371704555	RNWorkletsSpec_autolinked_build/CMakeFiles/react_codegen_RNWorkletsSpec.dir/react/renderer/components/RNWorkletsSpec/ComponentDescriptors.cpp.o	58a7e6c157917e6a
 284930	285606	8050268608182207	C:/max/amgtech/android/app/build/intermediates/cxx/Debug/5oy63i1u/obj/armeabi-v7a/libappmodules.so	aefe0981c2757f05
-5	102	0	C:/max/amgtech/android/app/.cxx/Debug/5oy63i1u/armeabi-v7a/CMakeFiles/cmake.verify_globs	e41fb428fb82c779
+6	83	0	C:/max/amgtech/android/app/.cxx/Debug/5oy63i1u/armeabi-v7a/CMakeFiles/cmake.verify_globs	e41fb428fb82c779

@@ -236,6 +236,8 @@ export default function FaceDetectionScreen() {
 
   const [latitude, setLatitude] = useState(0);
   const [longitude, setLongitude] = useState(0);
+  const [isCheckingDistance, setIsCheckingDistance] = useState(true);
+  const [distanceError, setDistanceError] = useState(null);
 
   useEffect(() => {
     currentStepRef.current = currentStep;
@@ -373,9 +375,16 @@ export default function FaceDetectionScreen() {
         const dataProfile = Array.isArray(p) ? p[0] : p;
         profileRef.current = dataProfile;
         setUser(dataProfile);
+
+        if (dataProfile?.userid) {
+          verifyLocationBeforeFace(dataProfile.userid, dataProfile.traneventid);
+        }
       })
-      .catch(e => console.warn('[FaceDetection] Gagal load profile:', e));
-  }, []);
+      .catch(e => {
+        console.warn('[FaceDetection] Gagal load profile:', e);
+        setIsCheckingDistance(false);
+      });
+  }, [verifyLocationBeforeFace]);
 
   const openCamera = useCallback(async () => {
     if (!hasPermission) {
@@ -385,15 +394,46 @@ export default function FaceDetectionScreen() {
     setShowCamera(true);
   }, [hasPermission, requestPermission]);
 
-  useEffect(() => {
-    const shuffled = pickRandom(CHALLENGE_KEYS, 3);
-    setChallenges(shuffled);
-    openCamera();
+  const verifyLocationBeforeFace = useCallback(
+    async (currentUserId, currentTranEventId) => {
+      setIsCheckingDistance(true);
+      try {
+        const loc = await requestLocationPermission();
+        if (!loc) {
+          setDistanceError('Gagal mendapatkan koordinat GPS Anda.');
+          setIsCheckingDistance(false);
+          return;
+        }
 
-    // requestLocationPermission().catch(err =>
-    //   console.log('Init location error ignored:', err),
-    // );
-  }, [openCamera, requestLocationPermission]);
+        const formData = new FormData();
+        formData.append('userid', currentUserId);
+        formData.append('latitude', String(loc.latitude));
+        formData.append('longitude', String(loc.longitude));
+        formData.append('traneventid', String(currentTranEventId ?? ''));
+
+        const response = await Api.checkDistance(formData);
+
+        if (response?.isInRange === false || response?.success === false) {
+          setDistanceError(
+            response?.pesan ||
+              'Anda berada di luar jangkauan lokasi penugasan.',
+          );
+        } else {
+          const shuffled = pickRandom(CHALLENGE_KEYS, 3);
+          setChallenges(shuffled);
+          openCamera();
+        }
+      } catch (err) {
+        console.warn('Error check distance:', err);
+        setDistanceError(
+          'Gagal memverifikasi jarak. Periksa koneksi internet Anda.',
+        );
+      } finally {
+        setIsCheckingDistance(false);
+      }
+    },
+    [openCamera, requestLocationPermission],
+  );
 
   useEffect(() => {
     if (isFocused) {
@@ -719,6 +759,51 @@ export default function FaceDetectionScreen() {
       : '#ececec';
 
   const currentChallengeId = challenges[currentStep];
+
+  if (isCheckingDistance) {
+    return (
+      <View className="flex-1 bg-white items-center justify-center px-6">
+        <ActivityIndicator size="large" color="#3b82f6" />
+        <Text className="text-gray-600 text-sm mt-4 font-medium text-center">
+          Memverifikasi koordinat dan jarak jangkauan lokasi Anda...
+        </Text>
+      </View>
+    );
+  }
+
+  if (distanceError) {
+    return (
+      <View className="flex-1 bg-white items-center justify-center px-9">
+        <XCircle size={64} color="#ef4444" style={{ marginBottom: 24 }} />
+        <Text className="text-gray-900 text-[22px] font-extrabold mb-3 text-center">
+          Presensi Ditolak
+        </Text>
+        <Text className="text-gray-500 text-sm text-center leading-relaxed mb-8">
+          {distanceError}
+        </Text>
+        <View className="w-full gap-y-3">
+          <TouchableOpacity
+            onPress={() => {
+              if (user?.userid)
+                verifyLocationBeforeFace(user.userid, user.traneventid);
+            }}
+            className="bg-gray-900 h-[50px] rounded-2xl items-center justify-center"
+          >
+            <Text className="text-white text-base font-bold">
+              Coba Cek Ulang Lokasi
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleGoBack}
+            className="border border-gray-200 h-[50px] rounded-2xl items-center justify-center"
+          >
+            <Text className="text-gray-600 text-base font-medium">Kembali</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   if (showCamera && !hasPermission) {
     return (

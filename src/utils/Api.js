@@ -16,7 +16,7 @@ class Api {
   static headersform() {
     return {
       'Custom-Security': CUSTOM_SECURITY,
-      'Content-Type': 'multipart/form-data',
+      // 'Content-Type': 'multipart/form-data',
       // LoginID: store.login.loginID,
     };
   }
@@ -32,6 +32,7 @@ class Api {
   static postForm(route, formData) {
     return this.formDataPost(route, formData, 'POST');
   }
+
   static get(route) {
     return this.func(route, null, 'GET');
   }
@@ -155,21 +156,30 @@ class Api {
     });
 
     formData.append('user_id', String(userid).trim());
+
     console.log('[Api] registerFace target URL:', url);
     console.log('[Api] registerFace image uri:', imageUrl);
+
     try {
-      const response = await axios.post(url, formData, {
+      const response = await fetch(url, {
+        method: 'POST',
         headers: {
-          'Content-Type': 'multipart/form-data',
-          'ngrok-skip-browser-warning': 'true', // untuk melewati peringatan ngrok
+          Accept: 'application/json',
+          'ngrok-skip-browser-warning': 'true', 
         },
-        timeout: 30000,
+        body: formData,
       });
-      return response.data;
+
+      const text = await response.text();
+      console.log('[Api] registerFace raw response:', text.slice(0, 200));
+
+      if (!response.ok) {
+        throw new Error(`Server returned status ${response.status}`);
+      }
+
+      return JSON.parse(text);
     } catch (error) {
-      console.warn('[Api] registerFace error code:', error.code);
-      console.warn('[Api] registerFace error message:', error.message);
-      console.warn('[Api] registerFace error config url:', error.config?.url);
+      console.warn('[Api] registerFace error:', error.message ?? error);
       throw error;
     }
   };
@@ -192,19 +202,24 @@ class Api {
     formData.append('user_id', String(userid).trim());
 
     try {
-      const response = await axios.post(url, formData, {
+      const response = await fetch(url, {
+        method: 'POST',
         headers: {
-          'Content-Type': 'multipart/form-data',
+          Accept: 'application/json',
           'ngrok-skip-browser-warning': 'true',
         },
-        timeout: 30000,
+        body: formData,
       });
-      return response.data;
+
+      const text = await response.text();
+
+      if (!response.ok) {
+        throw new Error(`Server returned status ${response.status}`);
+      }
+
+      return JSON.parse(text);
     } catch (error) {
-      console.warn(
-        '[Api] verifyFace error:',
-        error?.response?.data ?? error.message,
-      );
+      console.warn('[Api] verifyFace error:', error.message ?? error);
       throw error;
     }
   };
@@ -231,6 +246,32 @@ class Api {
       }
     } catch (error) {
       console.warn('[Api] clockIn error:', error?.message ?? error);
+      throw error;
+    }
+  };
+
+  static checkDistance = async formData => {
+    const url = `${base_url}/checkdistance`;
+
+    try {
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Custom-Security': CUSTOM_SECURITY,
+        },
+        body: formData,
+      });
+
+      const text = await resp.text();
+      console.log('[Api] checkDistance raw response:', text.slice(0, 200));
+
+      try {
+        return JSON.parse(text);
+      } catch {
+        throw new Error(`Server return non-JSON: ${text.slice(0, 100)}`);
+      }
+    } catch (error) {
+      console.warn('[Api] checkDistance error:', error?.message ?? error);
       throw error;
     }
   };

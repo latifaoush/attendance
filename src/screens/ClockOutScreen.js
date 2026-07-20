@@ -237,6 +237,10 @@ export default function ClockOutScreen() {
   const [latitude, setLatitude] = useState(0);
   const [longitude, setLongitude] = useState(0);
 
+  // --- Distance check state (mirrors FaceDetectionScreen / clock-in flow) ---
+  const [isCheckingDistance, setIsCheckingDistance] = useState(true);
+  const [distanceError, setDistanceError] = useState(null);
+
   useEffect(() => {
     currentStepRef.current = currentStep;
   }, [currentStep]);
@@ -380,16 +384,6 @@ export default function ClockOutScreen() {
     }, []),
   );
 
-  useEffect(() => {
-    Storage.getProfile()
-      .then(p => {
-        const dataProfile = Array.isArray(p) ? p[0] : p;
-        profileRef.current = dataProfile;
-        setUser(dataProfile);
-      })
-      .catch(e => console.warn('[FaceDetection] Gagal load profile:', e));
-  }, []);
-
   const openCamera = useCallback(async () => {
     if (!hasPermission) {
       const granted = await requestPermission();
@@ -398,12 +392,75 @@ export default function ClockOutScreen() {
     setShowCamera(true);
   }, [hasPermission, requestPermission]);
 
+  // --- Cek jarak sebelum membuka kamera (sama seperti alur clock-in) ---
+  const verifyLocationBeforeFace = useCallback(
+    async (currentUserId, currentTranEventId) => {
+      setIsCheckingDistance(true);
+      setDistanceError(null);
+
+      try {
+        const loc = await requestLocationPermission();
+        if (!loc) {
+          setDistanceError('Gagal mendapatkan koordinat GPS Anda.');
+          setIsCheckingDistance(false);
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append('userid', String(currentUserId));
+        formData.append('latitude', String(loc.latitude));
+        formData.append('longitude', String(loc.longitude));
+        formData.append('traneventid', String(currentTranEventId ?? ''));
+
+        const response = await Api.checkDistance(formData);
+
+        if (response?.isInRange === false || response?.success === false) {
+          setDistanceError(
+            response?.pesan ||
+              'Anda berada di luar jangkauan lokasi penugasan.',
+          );
+        } else {
+          const shuffled = pickRandom(CHALLENGE_KEYS, 3);
+          setChallenges(shuffled);
+          openCamera();
+        }
+      } catch (err) {
+        console.warn('Error check distance:', err);
+
+        if (err?.message === 'FAKE_GPS_DETECTED') {
+          setDistanceError(
+            'Sistem mendeteksi lokasi palsu (Fake GPS). Matikan aplikasi tiruan lokasi Anda untuk melanjutkan.',
+          );
+        } else {
+          setDistanceError(
+            'Gagal memverifikasi jarak. Periksa koneksi internet Anda.',
+          );
+        }
+      } finally {
+        setIsCheckingDistance(false);
+      }
+    },
+    [openCamera, requestLocationPermission],
+  );
+
   useEffect(() => {
-    const shuffled = pickRandom(CHALLENGE_KEYS, 3);
-    setChallenges(shuffled);
-    openCamera();
-    requestLocationPermission();
-  }, [openCamera, requestLocationPermission]);
+    Storage.getProfile()
+      .then(p => {
+        const dataProfile = Array.isArray(p) ? p[0] : p;
+        profileRef.current = dataProfile;
+        setUser(dataProfile);
+
+        if (dataProfile?.userid) {
+          verifyLocationBeforeFace(dataProfile.userid, dataProfile.traneventid);
+        } else {
+          setIsCheckingDistance(false);
+        }
+      })
+      .catch(e => {
+        console.warn('[ClockOut] Gagal load profile:', e);
+        setIsCheckingDistance(false);
+      });
+  }, [verifyLocationBeforeFace]);
 
   useEffect(() => {
     if (isFocused) {
@@ -469,7 +526,7 @@ export default function ClockOutScreen() {
         );
       }
     } catch (err) {
-      console.warn('[FaceDetection] captureAndVerify error:', err);
+      console.warn('[ClockOut] captureAndVerify error:', err);
       setVerifyState('fail');
       Alert.alert(
         'Error',
@@ -500,7 +557,7 @@ export default function ClockOutScreen() {
         setIsFinished(true);
       }
     } catch (err) {
-      console.warn('[FaceDetection] handleChallengeSuccess error:', err);
+      console.warn('[ClockOut] handleChallengeSuccess error:', err);
     } finally {
       setTimeout(() => setIsCapturing(false), 600);
     }
@@ -681,7 +738,7 @@ export default function ClockOutScreen() {
         );
       }
     } catch (error) {
-      console.warn('[FaceDetection] handleClockOut error:', error);
+      console.warn('[ClockOut] handleClockOut error:', error);
       Alert.alert('Error', 'Gagal menghubungi server.');
     } finally {
       setLoading(false);
@@ -715,6 +772,53 @@ export default function ClockOutScreen() {
       : '#ececec';
 
   const currentChallengeId = challenges[currentStep];
+
+  // --- Cek jarak sedang berjalan ---
+  if (isCheckingDistance) {
+    return (
+      <View className="flex-1 bg-white items-center justify-center px-6">
+        <ActivityIndicator size="large" color="#3b82f6" />
+        <Text className="text-gray-600 text-sm mt-4 font-medium text-center">
+          Memverifikasi koordinat dan jarak jangkauan lokasi Anda...
+        </Text>
+      </View>
+    );
+  }
+
+  // --- Di luar jangkauan lokasi penugasan ---
+  if (distanceError) {
+    return (
+      <View className="flex-1 bg-white items-center justify-center px-9">
+        <XCircle size={64} color="#ef4444" style={{ marginBottom: 24 }} />
+        <Text className="text-gray-900 text-[22px] font-extrabold mb-3 text-center">
+          Presensi Ditolak
+        </Text>
+        <Text className="text-gray-500 text-sm text-center leading-relaxed mb-8">
+          {distanceError}
+        </Text>
+        <View className="w-full gap-y-3">
+          <TouchableOpacity
+            onPress={() => {
+              if (user?.userid)
+                verifyLocationBeforeFace(user.userid, user.traneventid);
+            }}
+            className="bg-gray-900 h-[50px] rounded-2xl items-center justify-center"
+          >
+            <Text className="text-white text-base font-bold">
+              Coba Cek Ulang Lokasi
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleGoBack}
+            className="border border-gray-200 h-[50px] rounded-2xl items-center justify-center"
+          >
+            <Text className="text-gray-600 text-base font-medium">Kembali</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   if (showCamera && !hasPermission) {
     return (
@@ -802,7 +906,7 @@ export default function ClockOutScreen() {
                 pixelFormat="yuv"
                 frameProcessor={isFinished ? undefined : frameProcessor}
                 onError={error => {
-                  console.warn('[FaceDetection] Camera error:', error.code);
+                  console.warn('[ClockOut] Camera error:', error.code);
                   if (
                     error.code === 'system/camera-is-restricted' ||
                     error.code === 'system/camera-already-in-use' ||

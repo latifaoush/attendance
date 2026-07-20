@@ -1,6 +1,6 @@
 # ninja log v5
 231554	270299	8050274495003764	rnscreens_autolinked_build/CMakeFiles/react_codegen_rnscreens.dir/C_/max/amgtech/node_modules/react-native-screens/common/cpp/react/renderer/components/rnscreens/RNSSafeAreaViewState.cpp.o	3054d9c3a04e3111
-5	78	0	C:/max/amgtech/android/app/.cxx/Debug/5oy63i1u/x86_64/CMakeFiles/cmake.verify_globs	d8918ba09734b42c
+7	50	0	C:/max/amgtech/android/app/.cxx/Debug/5oy63i1u/x86_64/CMakeFiles/cmake.verify_globs	d8918ba09734b42c
 179565	206609	8050273859565284	safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir/5b3a4063054d01000e4db7c1a81007be/jni/react/renderer/components/safeareacontext/safeareacontextJSI-generated.cpp.o	4b487a5ae7a92ae4
 96	10576	8050271900774425	RNImageResizerSpec_autolinked_build/CMakeFiles/react_codegen_RNImageResizerSpec.dir/react/renderer/components/RNImageResizerSpec/EventEmitters.cpp.o	f47d1f6426544768
 123052	155914	8050273352858965	DeviceBrightnessSpec_autolinked_build/CMakeFiles/react_codegen_DeviceBrightnessSpec.dir/react/renderer/components/DeviceBrightnessSpec/ComponentDescriptors.cpp.o	2990b0cd6162da06
@@ -104,4 +104,4 @@
 390863	404156	8050275829439061	RNWorkletsSpec_autolinked_build/CMakeFiles/react_codegen_RNWorkletsSpec.dir/react/renderer/components/RNWorkletsSpec/States.cpp.o	70eacdba3a0ae0e7
 404012	421249	8050276007973652	RNWorkletsSpec_autolinked_build/CMakeFiles/react_codegen_RNWorkletsSpec.dir/react/renderer/components/RNWorkletsSpec/ShadowNodes.cpp.o	39383dc2d3a61c31
 421251	422917	8050276018163712	C:/max/amgtech/android/app/build/intermediates/cxx/Debug/5oy63i1u/obj/x86_64/libappmodules.so	c7f107cd4feac229
-6	95	0	C:/max/amgtech/android/app/.cxx/Debug/5oy63i1u/x86_64/CMakeFiles/cmake.verify_globs	d8918ba09734b42c
+5	377	0	C:/max/amgtech/android/app/.cxx/Debug/5oy63i1u/x86_64/CMakeFiles/cmake.verify_globs	d8918ba09734b42c

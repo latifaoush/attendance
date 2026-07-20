@@ -24,46 +24,45 @@ export default function LoginScreen({ setToken, navigation }) {
       return;
     }
     setLoading(true);
-    // const context = this.context;
+
     const formData = new FormData();
     formData.append('username', username);
     formData.append('pass', password);
-    console.log(formData.username);
-    // let self = this;
-    await axios
-      .post(Api.getBaseUrl() + '/login', formData, {
-        // method: 'POST',
-        headers: Api.headersform(),
-      })
-      .then(async function (response) {
-        if (response.data.success) {
-          console.log('Response API:', response.data);
-          const token = response.data.data[0].userid;
-          const profileData = response.data.data;
 
-          await Storage.setCredentials(username, password);
-          await Storage.setProfile(profileData);
-          await AsyncStorage.setItem('userToken', token);
+    try {
+      const response = await Api.axios('login', formData);
 
-          if (typeof setToken === 'function') {
-            setToken(token);
-          }
-          
-          ToastAndroid.show(response.data.pesan, 3000);
-          // navigation.reset({
-          //   index: 0,
-          //   routes: [{ name: 'MainTabs' }],
-          // });
-        } else {
-          await Storage.clearProfile();
-          ToastAndroid.show(response.data.pesan, 3000);
+      if (response.data.success) {
+        console.log('Response API:', response.data);
+        const token = response.data.data[0].userid;
+        const profileData = response.data.data;
+
+        await Storage.setCredentials(username, password);
+        await Storage.setProfile(profileData);
+        await AsyncStorage.setItem('userToken', token);
+
+        if (typeof setToken === 'function') {
+          setToken(token);
         }
-        // context.setAuthState({ signedIn: true });
-      })
-      .catch(function (response) {
-        console.log(response);
-      });
-    setLoading(false);
+
+        ToastAndroid.show(response.data.pesan, 3000);
+      } else {
+        await Storage.clearProfile();
+        ToastAndroid.show(response.data.pesan, 3000);
+      }
+    } catch (error) {
+      if (error.response) {
+        console.log('Error Data:', error.response.data);
+        console.log('Error Status:', error.response.status);
+      } else if (error.request) {
+        console.log('Error Request (No Response):', error.request);
+      } else {
+        console.log('Error Message:', error.message);
+      }
+      ToastAndroid.show('Gagal terhubung ke server', 3000);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
